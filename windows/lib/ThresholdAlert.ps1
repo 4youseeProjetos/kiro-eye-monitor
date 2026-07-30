@@ -10,6 +10,41 @@ Set-StrictMode -Version Latest
 
 $script:NiveisSemAviso = @('ok', 'falha')
 
+function Test-FailureAlert {
+    <#
+        .SYNOPSIS
+        Indica se a falha deve gerar aviso na bandeja.
+        .DESCRIPTION
+        Avisa na entrada em falha, e nao a cada coleta: com auto-refresh de 5
+        minutos, repetir seria ruido. A janela minimizada e o caso que exige
+        isso, pois o painel de erro nao esta a vista.
+        .EXAMPLE
+        Test-FailureAlert -Previous 'ok' -Current 'falha'  # $true
+    #>
+    param(
+        [Parameter(Mandatory)][AllowEmptyString()][string]$Previous,
+        [Parameter(Mandatory)][AllowEmptyString()][string]$Current
+    )
+    return ($Current -eq 'falha') -and ($Previous -ne 'falha')
+}
+
+function New-FailureAlertContent {
+    <#
+        .SYNOPSIS
+        Titulo e texto do aviso de falha de coleta.
+        .EXAMPLE
+        New-FailureAlertContent -Report $relatorio -LogPath 'C:\...\janela.jsonl'
+    #>
+    param(
+        [Parameter(Mandatory)][pscustomobject]$Report,
+        [AllowEmptyString()][string]$LogPath = ''
+    )
+    return [pscustomobject]@{
+        Title   = 'kiro-eye-monitor: falha ao ler o consumo'
+        Message = "$($Report.error)`n" + (Format-KiroFailureHint -Report $Report -LogPath $LogPath)
+    }
+}
+
 function Test-ThresholdWorsened {
     <#
         .SYNOPSIS

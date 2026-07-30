@@ -69,6 +69,64 @@ function Format-KiroCyclePace {
     return "Ritmo do mes: $porDia creditos/dia  (media de $decorridos de $total dias)"
 }
 
+$script:LinhasDeRuido = @(
+    '^\s*\+',                       # continuacao e marcadores do PowerShell
+    '^\s*No linha:\d+',             # cabecalho de erro, Windows em portugues
+    '^\s*At line:\d+',              # idem, em ingles
+    '^\s*CategoryInfo',
+    '^\s*FullyQualifiedErrorId'
+)
+$script:LimiteResumo = 220
+
+function Format-KiroErrorSummary {
+    <#
+        .SYNOPSIS
+        Reduz a mensagem de falha ao que interessa na janela.
+        .DESCRIPTION
+        A saida crua traz o despejo de erro do PowerShell (posicao no script,
+        CategoryInfo, til apontando a linha). Isso e util no log, nao na tela.
+        .EXAMPLE
+        Format-KiroErrorSummary -Message $Report.error
+    #>
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$Message)
+
+    $uteis = @($Message -split "`r?`n" | Where-Object {
+            $linha = $_
+            if ([string]::IsNullOrWhiteSpace($linha)) { return $false }
+            foreach ($ruido in $script:LinhasDeRuido) {
+                if ($linha -match $ruido) { return $false }
+            }
+            return $true
+        })
+    if ($uteis.Count -eq 0) { return $Message.Trim() }
+    $resumo = ($uteis[0..([Math]::Min(1, $uteis.Count - 1))] | ForEach-Object { $_.Trim() }) -join ' '
+    if ($resumo.Length -le $script:LimiteResumo) { return $resumo }
+    return $resumo.Substring(0, $script:LimiteResumo) + '...'
+}
+
+function Format-KiroFailureHint {
+    <#
+        .SYNOPSIS
+        Diz ao desenvolvedor o que fazer diante da falha, e onde estao os detalhes.
+        .DESCRIPTION
+        Prefere o log do WSL, que traz o ambiente e o traceback; o log da janela
+        e a alternativa quando a falha nem chegou ao coletor.
+        .EXAMPLE
+        Format-KiroFailureHint -Report $relatorio -LogPath 'C:\...\janela.jsonl'
+    #>
+    param(
+        [Parameter(Mandatory)][pscustomobject]$Report,
+        [AllowEmptyString()][string]$LogPath = ''
+    )
+    $log = if ($Report.PSObject.Properties.Name -contains 'log_path' -and
+        -not [string]::IsNullOrWhiteSpace($Report.log_path)) { [string]$Report.log_path }
+    else { $LogPath }
+
+    $texto = 'No WSL, rode ./scripts/diagnostico.sh na pasta do projeto e envie a saida.'
+    if ([string]::IsNullOrWhiteSpace($log)) { return $texto }
+    return "$texto Detalhes desta falha em: $log"
+}
+
 function Format-KiroProjection {
     <# Projecao do ciclo: consumo no fim do mes ou data de esgotamento. #>
     param(

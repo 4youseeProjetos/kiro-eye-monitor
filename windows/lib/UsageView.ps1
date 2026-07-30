@@ -192,6 +192,28 @@ function Show-DetailSection {
     $Ui.UnattributedText.Text = Format-KiroUnattributed -Credits $Report.unattributed_credits
 }
 
+function Show-FailurePanel {
+    <#
+        .SYNOPSIS
+        Mostra a falha no topo, com onde olhar e o que rodar.
+        .EXAMPLE
+        Show-FailurePanel -Ui $ui -Report $relatorio -LogPath 'C:\...\janela.jsonl'
+    #>
+    param(
+        [Parameter(Mandatory)][hashtable]$Ui,
+        [Parameter(Mandatory)][pscustomobject]$Report,
+        [AllowEmptyString()][string]$LogPath = ''
+    )
+    $Ui.ErrorPanel.Visibility = 'Visible'
+    $Ui.ErrorText.Text = Format-KiroErrorSummary -Message ([string]$Report.error)
+    $Ui.ErrorHintText.Text = Format-KiroFailureHint -Report $Report -LogPath $LogPath
+    $Ui.HeadlineText.Text = 'sem dados'
+    $Ui.PlanText.Text = 'nao foi possivel consultar a conta'
+    $Ui.PercentText.Text = ''
+    $Ui.BurnText.Text = ''
+    $Ui.ProjectionText.Text = ''
+}
+
 function Show-UsageReport {
     <#
         .SYNOPSIS
@@ -204,12 +226,15 @@ function Show-UsageReport {
         [Parameter(Mandatory)][pscustomobject]$Report,
         [Parameter(Mandatory)][int]$WarnPercent,
         [Parameter(Mandatory)][int]$CriticalPercent,
-        [Parameter(Mandatory)][int]$TopProjects
+        [Parameter(Mandatory)][int]$TopProjects,
+        [AllowEmptyString()][string]$LogPath = ''
     )
     if (Test-KiroCollectorFailure -Report $Report) {
-        $Ui.StatusText.Text = "Falha: $($Report.error)"
+        Show-FailurePanel -Ui $Ui -Report $Report -LogPath $LogPath
+        $Ui.StatusText.Text = 'Falha as ' + (Get-Date).ToString('HH:mm')
         return $script:NivelFalha
     }
+    $Ui.ErrorPanel.Visibility = 'Collapsed'
     $nivel = Show-AccountSection -Ui $Ui -Report $Report `
         -WarnPercent $WarnPercent -CriticalPercent $CriticalPercent
     Show-DetailSection -Ui $Ui -Report $Report -TopProjects $TopProjects

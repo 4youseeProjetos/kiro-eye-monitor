@@ -21,6 +21,43 @@ function New-RelatorioDeTeste {
     return $relatorio
 }
 
+Describe 'Test-FailureAlert' {
+    It 'avisa ao entrar em falha' {
+        Test-FailureAlert -Previous 'ok' -Current 'falha' | Should Be $true
+    }
+
+    It 'nao repete o aviso enquanto a falha persiste' {
+        Test-FailureAlert -Previous 'falha' -Current 'falha' | Should Be $false
+    }
+
+    It 'nao avisa quando a coleta volta a funcionar' {
+        Test-FailureAlert -Previous 'falha' -Current 'ok' | Should Be $false
+    }
+}
+
+Describe 'New-FailureAlertContent' {
+    It 'traz a mensagem do erro e o caminho do log do WSL' {
+        $relatorio = [pscustomobject]@{
+            error    = "executavel nao encontrado: 'kiro-cli'"
+            log_path = '/home/dev/.local/state/kiro-eye-monitor/erros.jsonl'
+        }
+
+        $aviso = New-FailureAlertContent -Report $relatorio -LogPath 'C:\log\janela.jsonl'
+
+        $aviso.Title | Should Be 'kiro-eye-monitor: falha ao ler o consumo'
+        $aviso.Message | Should Match "kiro-cli"
+        $aviso.Message | Should Match 'diagnostico\.sh'
+        $aviso.Message | Should Match 'erros\.jsonl'
+    }
+
+    It 'usa o log da janela quando a falha nao chegou ao coletor' {
+        $relatorio = [pscustomobject]@{ error = 'resposta nao e JSON' }
+
+        (New-FailureAlertContent -Report $relatorio -LogPath 'C:\log\janela.jsonl').Message |
+            Should Match 'janela\.jsonl'
+    }
+}
+
 Describe 'Test-ThresholdWorsened' {
     It 'avisa quando sai de ok para atencao' {
         Test-ThresholdWorsened -Previous 'ok' -Current 'atencao' | Should Be $true

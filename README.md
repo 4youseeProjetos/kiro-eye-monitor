@@ -145,6 +145,12 @@ mensagem na barra de status.
 
 ## Quando algo falha
 
+A janela não fica quieta: um painel vermelho aparece no topo com a causa, o
+número principal vira `sem dados` — para não haver dúvida de que os valores na
+tela não valem — e o rodapé mostra o horário da tentativa. Se a janela estiver
+minimizada, um aviso surge na bandeja, uma vez por entrada em falha, e não a
+cada tentativa.
+
 Rode isto na máquina onde o problema aparece e mande a saída inteira:
 
 ```bash

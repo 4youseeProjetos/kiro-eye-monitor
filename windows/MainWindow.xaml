@@ -18,6 +18,38 @@
     </Window.Resources>
     <StackPanel Margin="18">
 
+        <!--
+            Painel de falha, no topo para nao passar batido: enquanto a falha
+            existe, os numeros abaixo estao vazios ou velhos, e uma linha
+            discreta no rodape nao comunicava isso.
+        -->
+        <Border x:Name="ErrorPanel"
+                Visibility="Collapsed"
+                Background="#22F48771"
+                BorderBrush="{StaticResource CorCritica}"
+                BorderThickness="1"
+                Padding="12"
+                Margin="0,0,0,14">
+            <StackPanel>
+                <TextBlock Text="Falha ao ler o consumo"
+                           Foreground="{StaticResource CorCritica}"
+                           FontSize="14"
+                           FontWeight="Bold" />
+                <TextBlock x:Name="ErrorText"
+                           Foreground="#FFFFFFFF"
+                           FontSize="12"
+                           TextWrapping="Wrap"
+                           Margin="0,6,0,0"
+                           Text="--" />
+                <TextBlock x:Name="ErrorHintText"
+                           Foreground="#FFCCCCCC"
+                           FontSize="11"
+                           TextWrapping="Wrap"
+                           Margin="0,8,0,0"
+                           Text="--" />
+            </StackPanel>
+        </Border>
+
         <!-- Informacao principal: total da conta, que ja soma IDE + CLI + web -->
         <TextBlock x:Name="PlanText" Foreground="#FF9CDCFE" FontSize="12" Text="Carregando..." />
         <TextBlock x:Name="HeadlineText"

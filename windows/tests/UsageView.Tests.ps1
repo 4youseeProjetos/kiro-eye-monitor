@@ -9,6 +9,7 @@ Add-Type -AssemblyName PresentationFramework
 
 $script:XamlPath = Join-Path (Split-Path -Parent $PSScriptRoot) 'MainWindow.xaml'
 $script:Nomes = @(
+    'ErrorPanel', 'ErrorText', 'ErrorHintText',
     'PlanText', 'HeadlineText', 'UsageBar', 'PercentText', 'BurnText', 'ProjectionText',
     'DetailToggle', 'DetailPanel', 'CliTotalText', 'ProjectList', 'UnattributedText',
     'StatusText', 'RefreshButton'
@@ -163,12 +164,58 @@ Describe 'Show-UsageReport nos limiares de alerta' {
 Describe 'Show-UsageReport quando a coleta falha' {
 
     $ui = New-TestUi
-    $nivel = Show-UsageReport -Ui $ui -Report ([pscustomobject]@{ error = 'uv nao encontrado' }) `
-        -WarnPercent 75 -CriticalPercent 90 -TopProjects 8
+    $relatorio = [pscustomobject]@{
+        error    = "executavel nao encontrado: 'kiro-cli'"
+        log_path = '/home/dev/.local/state/kiro-eye-monitor/erros.jsonl'
+    }
+    $nivel = Show-UsageReport -Ui $ui -Report $relatorio -WarnPercent 75 -CriticalPercent 90 `
+        -TopProjects 8 -LogPath 'C:\log\janela.jsonl'
 
     It 'devolve nivel de falha' { $nivel | Should Be 'falha' }
 
-    It 'mostra a causa na barra de status' {
-        $ui.StatusText.Text | Should Be 'Falha: uv nao encontrado'
+    It 'abre o painel de erro, que comeca escondido' {
+        # Antes a falha aparecia so numa linha cinza no rodape, enquanto o resto
+        # da janela seguia com "Carregando..." e "--".
+        $ui.ErrorPanel.Visibility | Should Be 'Visible'
+    }
+
+    It 'mostra a causa em destaque, sem o despejo do PowerShell' {
+        $ui.ErrorText.Text | Should Be "executavel nao encontrado: 'kiro-cli'"
+    }
+
+    It 'limpa os numeros antigos em vez de deixar tracinhos' {
+        $ui.BurnText.Text | Should Be ''
+        $ui.ProjectionText.Text | Should Be ''
+    }
+
+    It 'diz o que fazer e onde estao os detalhes' {
+        $ui.ErrorHintText.Text | Should Match 'diagnostico\.sh'
+        $ui.ErrorHintText.Text | Should Match 'erros\.jsonl'
+    }
+
+    It 'deixa claro que os numeros nao sao validos' {
+        $ui.HeadlineText.Text | Should Be 'sem dados'
+        $ui.PercentText.Text | Should Be ''
+    }
+
+    It 'registra o horario da tentativa' {
+        $ui.StatusText.Text | Should Match '^Falha as \d\d:\d\d$'
+    }
+}
+
+Describe 'Show-UsageReport depois que a coleta volta a funcionar' {
+
+    $ui = New-TestUi
+    Show-UsageReport -Ui $ui -Report ([pscustomobject]@{ error = 'falhou' }) `
+        -WarnPercent 75 -CriticalPercent 90 -TopProjects 8 | Out-Null
+    Show-UsageReport -Ui $ui -Report (New-TestReport) `
+        -WarnPercent 75 -CriticalPercent 90 -TopProjects 8 | Out-Null
+
+    It 'esconde o painel de erro' {
+        $ui.ErrorPanel.Visibility | Should Be 'Collapsed'
+    }
+
+    It 'volta a mostrar os creditos' {
+        $ui.HeadlineText.Text | Should Match 'creditos'
     }
 }

@@ -45,6 +45,7 @@ Add-Type -AssemblyName System.Drawing
 
 $script:PollIntervalMs = 250
 $script:ControlNames = @(
+    'ErrorPanel', 'ErrorText', 'ErrorHintText',
     'PlanText', 'HeadlineText', 'UsageBar', 'PercentText', 'BurnText', 'ProjectionText',
     'DetailToggle', 'DetailPanel', 'CliTotalText', 'ProjectList', 'UnattributedText',
     'StatusText', 'RefreshButton'
@@ -91,31 +92,33 @@ function Complete-Collection {
     $null = Write-CollectionFailure -Report $relatorio -Raw ([string]$bruto)
     $nivel = Show-UsageReport -Ui $script:Ui -Report $relatorio `
         -WarnPercent $script:WarnPercent -CriticalPercent $script:CriticalPercent `
-        -TopProjects $script:TopProjects
+        -TopProjects $script:TopProjects -LogPath $script:LogPath
     Send-ThresholdAlert -Level $nivel -Report $relatorio
 }
 
 function Send-ThresholdAlert {
-    <# Avisa na bandeja apenas quando o nivel piora, para nao repetir balao. #>
+    <# Avisa na bandeja quando entra em falha ou quando o consumo piora de faixa. #>
     param([Parameter(Mandatory)][string]$Level, [Parameter(Mandatory)][pscustomobject]$Report)
 
     $anterior = $script:UltimoNivel
     $script:UltimoNivel = $Level
-    if (-not (Test-ThresholdWorsened -Previous $anterior -Current $Level)) { return }
     # Aviso e acessorio: relatorio com campo faltando nao pode fechar a janela,
     # que e a informacao principal. A falha vai para o log.
     try {
-        $aviso = New-ThresholdAlertContent -Report $Report
-        $script:Tray.ShowBalloonTip(
-            10000,
-            $aviso.Title,
-            $aviso.Message,
-            [System.Windows.Forms.ToolTipIcon]::Warning
-        )
+        if (Test-FailureAlert -Previous $anterior -Current $Level) {
+            $aviso = New-FailureAlertContent -Report $Report -LogPath $script:LogPath
+            $icone = [System.Windows.Forms.ToolTipIcon]::Error
+        }
+        elseif (Test-ThresholdWorsened -Previous $anterior -Current $Level) {
+            $aviso = New-ThresholdAlertContent -Report $Report
+            $icone = [System.Windows.Forms.ToolTipIcon]::Warning
+        }
+        else { return }
+        $script:Tray.ShowBalloonTip(10000, $aviso.Title, $aviso.Message, $icone)
     }
     catch {
         $null = Write-WindowLogEntry -Path $script:LogPath `
-            -Message "falha ao montar o aviso de limiar: $($_.Exception.Message)" `
+            -Message "falha ao avisar na bandeja: $($_.Exception.Message)" `
             -Context @{ nivel = $Level }
     }
 }

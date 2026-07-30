@@ -104,3 +104,42 @@ Describe 'Format-KiroLocalTime' {
         Format-KiroLocalTime -IsoTimestamp $null | Should Be '--'
     }
 }
+
+Describe 'Format-KiroErrorSummary' {
+    It 'mantem mensagem simples intacta' {
+        Format-KiroErrorSummary -Message "executavel nao encontrado: 'kiro-cli'" |
+            Should Be "executavel nao encontrado: 'kiro-cli'"
+    }
+
+    It 'descarta o despejo de erro do PowerShell' {
+        $bruto = @'
+resposta nao e JSON: wsl.exe : /bin/bash: line 1: /nao/existe/collect.sh: No such file or directory
+No linha:5 caractere:5
++     & wsl.exe @wslArgs 2>&1
++     ~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (...)
+    + FullyQualifiedErrorId : NativeCommandError
+'@
+        $resumo = Format-KiroErrorSummary -Message $bruto
+
+        $resumo | Should Match 'No such file or directory'
+        $resumo | Should Not Match 'CategoryInfo'
+        $resumo | Should Not Match 'FullyQualifiedErrorId'
+        $resumo | Should Not Match 'caractere'
+    }
+
+    It 'descarta o cabecalho em ingles tambem' {
+        Format-KiroErrorSummary -Message "falhou`nAt line:5 char:5" | Should Be 'falhou'
+    }
+
+    It 'trunca mensagem muito longa' {
+        $resultado = Format-KiroErrorSummary -Message ('x' * 400)
+
+        $resultado.EndsWith('...') | Should Be $true
+        $resultado.Length | Should BeLessThan 230
+    }
+
+    It 'devolve a mensagem original quando so ha ruido' {
+        Format-KiroErrorSummary -Message '+ apenas ruido' | Should Be '+ apenas ruido'
+    }
+}
