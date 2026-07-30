@@ -1,0 +1,99 @@
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Consumo Kiro"
+        Width="430"
+        SizeToContent="Height"
+        ResizeMode="CanMinimize"
+        Background="#FF1E1E1E"
+        WindowStartupLocation="Manual">
+    <!--
+        Fonte unica das cores de estado: o codigo resolve estes recursos por
+        chave (FindResource), em vez de repetir os hex em PowerShell.
+        CorOk e o azul da logo do app.
+    -->
+    <Window.Resources>
+        <SolidColorBrush x:Key="CorOk" Color="#FF0096FF" />
+        <SolidColorBrush x:Key="CorAtencao" Color="#FFDCDCAA" />
+        <SolidColorBrush x:Key="CorCritica" Color="#FFF48771" />
+    </Window.Resources>
+    <StackPanel Margin="18">
+
+        <!-- Informacao principal: total da conta, que ja soma IDE + CLI + web -->
+        <TextBlock x:Name="PlanText" Foreground="#FF9CDCFE" FontSize="12" Text="Carregando..." />
+        <TextBlock x:Name="HeadlineText"
+                   Foreground="#FFFFFFFF"
+                   FontSize="26"
+                   FontWeight="SemiBold"
+                   Margin="0,4,0,8"
+                   Text="--" />
+        <ProgressBar x:Name="UsageBar"
+                     Height="14"
+                     Minimum="0"
+                     Maximum="100"
+                     Background="#FF2D2D2D"
+                     BorderBrush="#FF3F3F3F" />
+        <TextBlock x:Name="PercentText" Foreground="#FFCCCCCC" FontSize="12" Margin="0,6,0,0" Text="--" />
+
+        <Border Height="1" Background="#FF333333" Margin="0,14" />
+
+        <TextBlock x:Name="BurnText" Foreground="#FFDCDCAA" FontSize="12" TextWrapping="Wrap" Text="--" />
+        <TextBlock x:Name="ProjectionText"
+                   Foreground="#FFCCCCCC"
+                   FontSize="12"
+                   Margin="0,5,0,0"
+                   TextWrapping="Wrap"
+                   Text="--" />
+
+        <CheckBox x:Name="DetailToggle"
+                  Content="Detalhar consumo do kiro-cli"
+                  Foreground="#FFCCCCCC"
+                  Margin="0,14,0,0" />
+
+        <StackPanel x:Name="DetailPanel" Visibility="Collapsed" Margin="0,10,0,0">
+            <TextBlock x:Name="CliTotalText" Foreground="#FFFFFFFF" FontSize="12" TextWrapping="Wrap" Text="--" />
+            <ItemsControl x:Name="ProjectList" Margin="0,8,0,0">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Grid Margin="0,2">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{Binding Nome}"
+                                       Foreground="#FFCCCCCC"
+                                       FontSize="11"
+                                       TextTrimming="CharacterEllipsis"
+                                       ToolTip="{Binding Caminho}" />
+                            <TextBlock Grid.Column="1"
+                                       Text="{Binding Creditos}"
+                                       Foreground="{StaticResource CorOk}"
+                                       FontSize="11"
+                                       Margin="10,0,0,0" />
+                        </Grid>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock x:Name="UnattributedText"
+                       Foreground="#FFC586C0"
+                       FontSize="11"
+                       Margin="0,10,0,0"
+                       TextWrapping="Wrap"
+                       Text="" />
+        </StackPanel>
+
+        <Border Height="1" Background="#FF333333" Margin="0,14" />
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock x:Name="StatusText"
+                       Foreground="#FF808080"
+                       FontSize="11"
+                       VerticalAlignment="Center"
+                       TextWrapping="Wrap" />
+            <Button x:Name="RefreshButton" Grid.Column="1" Content="Atualizar" Padding="12,4" />
+        </Grid>
+    </StackPanel>
+</Window>

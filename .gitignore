@@ -1,0 +1,19 @@
+# Ambiente e artefatos de build
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Cache de teste
+.pytest_cache/
+
+# O banco de snapshots fica em ~/.local/share/kiro-eye-monitor/, fora da arvore do
+# projeto. Esta entrada cobre execucoes com --db apontado para ca.
+*.db
+*.sqlite3
+
+# Windows
+Thumbs.db
+desktop.ini
