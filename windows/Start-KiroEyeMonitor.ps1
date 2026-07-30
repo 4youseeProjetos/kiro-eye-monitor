@@ -41,6 +41,7 @@ Add-Type -AssemblyName System.Drawing
 . "$PSScriptRoot\lib\UsageView.ps1"
 . "$PSScriptRoot\lib\BackgroundCall.ps1"
 . "$PSScriptRoot\lib\WindowLog.ps1"
+. "$PSScriptRoot\lib\ThresholdAlert.ps1"
 
 $script:PollIntervalMs = 250
 $script:ControlNames = @(
@@ -100,13 +101,23 @@ function Send-ThresholdAlert {
 
     $anterior = $script:UltimoNivel
     $script:UltimoNivel = $Level
-    if ($Level -eq 'ok' -or $Level -eq 'falha' -or $Level -eq $anterior) { return }
-    $script:Tray.ShowBalloonTip(
-        10000,
-        "kiro-eye-monitor em $($Report.account.used_percent)%",
-        (Format-KiroProjection -BurnRate $Report.burn_rate -Account $Report.account),
-        [System.Windows.Forms.ToolTipIcon]::Warning
-    )
+    if (-not (Test-ThresholdWorsened -Previous $anterior -Current $Level)) { return }
+    # Aviso e acessorio: relatorio com campo faltando nao pode fechar a janela,
+    # que e a informacao principal. A falha vai para o log.
+    try {
+        $aviso = New-ThresholdAlertContent -Report $Report
+        $script:Tray.ShowBalloonTip(
+            10000,
+            $aviso.Title,
+            $aviso.Message,
+            [System.Windows.Forms.ToolTipIcon]::Warning
+        )
+    }
+    catch {
+        $null = Write-WindowLogEntry -Path $script:LogPath `
+            -Message "falha ao montar o aviso de limiar: $($_.Exception.Message)" `
+            -Context @{ nivel = $Level }
+    }
 }
 
 function New-TrayIcon {
