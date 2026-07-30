@@ -40,7 +40,7 @@ scripts/collect.sh --account-only
 Deve imprimir um JSON com `account.plan_name` e `account.credits_used`. Se vier
 `{"error": ...}`, a mensagem diz a causa.
 
-A janela em si aparece com o título **Consumo Kiro**.
+A janela em si aparece com o título **kiro-eye-monitor**.
 
 ## Erros comuns
 

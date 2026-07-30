@@ -49,7 +49,7 @@ O repositório traz um [AGENTS.md](AGENTS.md) com o roteiro que o agente segue:
 onde clonar, o que verificar antes, qual comando rodar e como confirmar que
 funcionou. É a mesma instalação, só delegada.
 
-Para abrir depois: o atalho **Consumo Kiro** na área de trabalho, ou
+Para abrir depois: o atalho **kiro-eye-monitor** na área de trabalho, ou
 `%LOCALAPPDATA%\KiroEyeMonitor\Start-KiroEyeMonitor.cmd`.
 
 Depois de atualizar o repositório (`git pull`), rode `./install.sh` de novo para

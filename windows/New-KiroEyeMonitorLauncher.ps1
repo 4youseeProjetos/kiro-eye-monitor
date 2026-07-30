@@ -28,7 +28,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $script:LauncherName = 'Start-KiroEyeMonitor.cmd'
-$script:ShortcutName = 'Consumo Kiro.lnk'
+$script:ShortcutName = 'kiro-eye-monitor.lnk'
 $script:MinimizedWindow = 7
 
 function Get-WindowArgument {

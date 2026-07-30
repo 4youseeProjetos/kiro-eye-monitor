@@ -11,7 +11,8 @@ set -euo pipefail
 
 PROJECT_DIR=$(cd -- "$(dirname -- "$0")" && pwd)
 POWERSHELL='/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe'
-APP_TITLE='Consumo Kiro'
+APP_TITLE='kiro-eye-monitor'
+WINDOW_SCRIPT='Start-KiroEyeMonitor.ps1'
 ADD_DESKTOP=''
 ADD_STARTUP=''
 ASSUME_YES=''
@@ -97,10 +98,14 @@ local_appdata_windows() {
 
 encerrar_instancia_aberta() {
     # A janela aberta mantem assets/eye.ico bloqueado, impedindo a sobrescrita.
+    #
+    # A busca e pela linha de comando do processo, e nao pelo titulo da janela:
+    # o titulo pode mudar entre versoes, e uma instancia com titulo antigo
+    # sobreviveria ao encerramento e travaria a copia.
     (cd /mnt/c && "$POWERSHELL" -NoProfile -Command \
-        "Get-Process powershell -ErrorAction SilentlyContinue |
-         Where-Object { \$_.MainWindowTitle -eq '$APP_TITLE' } |
-         Stop-Process -Force") >/dev/null 2>&1 || true
+        "Get-CimInstance Win32_Process -Filter \"Name='powershell.exe'\" |
+         Where-Object { \$_.CommandLine -like '*$WINDOW_SCRIPT*' } |
+         ForEach-Object { Stop-Process -Id \$_.ProcessId -Force }") >/dev/null 2>&1 || true
     sleep 1
 }
 

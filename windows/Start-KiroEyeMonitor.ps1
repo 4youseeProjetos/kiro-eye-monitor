@@ -92,7 +92,7 @@ function Send-ThresholdAlert {
     if ($Level -eq 'ok' -or $Level -eq 'falha' -or $Level -eq $anterior) { return }
     $script:Tray.ShowBalloonTip(
         10000,
-        "Consumo Kiro em $($Report.account.used_percent)%",
+        "kiro-eye-monitor em $($Report.account.used_percent)%",
         (Format-KiroProjection -BurnRate $Report.burn_rate -Account $Report.account),
         [System.Windows.Forms.ToolTipIcon]::Warning
     )
@@ -107,7 +107,7 @@ function New-TrayIcon {
     else {
         [System.Drawing.SystemIcons]::Information
     }
-    $tray.Text = 'Consumo Kiro'
+    $tray.Text = 'kiro-eye-monitor'
     $tray.Visible = $true
     $tray.add_DoubleClick({ $script:MainWindow.Activate() })
     return $tray

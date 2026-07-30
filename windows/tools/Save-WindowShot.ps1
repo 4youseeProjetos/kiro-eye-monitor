@@ -7,7 +7,7 @@
 # Uso: .\Save-WindowShot.ps1 -Destination C:\temp\janela.png
 [CmdletBinding()]
 param(
-    [string]$WindowTitle = 'Consumo Kiro',
+    [string]$WindowTitle = 'kiro-eye-monitor',
     [Parameter(Mandatory)][string]$Destination
 )
 
