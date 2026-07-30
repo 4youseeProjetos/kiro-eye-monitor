@@ -12,10 +12,13 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import traceback
 from datetime import datetime, timezone
 from pathlib import Path
 
 from kiro_eye_monitor.collector import UsageCollector
+from kiro_eye_monitor.diagnostics import describe_environment
+from kiro_eye_monitor.error_log import JsonlErrorLog, default_log_path
 from kiro_eye_monitor.serialization import report_to_dict
 from kiro_eye_monitor.session_reader import CliSessionReader, default_cli_sessions_dir
 from kiro_eye_monitor.snapshot_store import SnapshotStore
@@ -45,6 +48,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--db", type=Path, default=default_db_path())
     parser.add_argument("--kiro-cli", default="kiro-cli")
     parser.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT_SECONDS)
+    parser.add_argument("--log", type=Path, default=default_log_path())
     return parser
 
 
@@ -58,13 +62,25 @@ def _build_collector(options: argparse.Namespace) -> UsageCollector:
     )
 
 
+def _registrar_falha(options: argparse.Namespace, erro: Exception) -> Path:
+    """Grava a falha com o contexto do ambiente e devolve o caminho do log."""
+    log = JsonlErrorLog(options.log, lambda: datetime.now(timezone.utc))
+    return log.record(
+        message=str(erro),
+        context=describe_environment(options.kiro_cli, options.sessions_dir),
+        traceback_text="".join(traceback.format_exception(erro)),
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     """Imprime o relatorio em JSON; devolve o codigo de saida do processo."""
     options = build_parser().parse_args(argv)
     try:
         report = _build_collector(options).collect(include_cli_detail=not options.account_only)
     except (UsageCommandError, ValueError, OSError) as erro:
-        print(json.dumps({"error": str(erro)}, ensure_ascii=False), file=sys.stdout)
+        caminho = _registrar_falha(options, erro)
+        falha = {"error": str(erro), "log_path": str(caminho)}
+        print(json.dumps(falha, ensure_ascii=False), file=sys.stdout)
         return _EXIT_ERROR
     print(json.dumps(report_to_dict(report), ensure_ascii=False))
     return 0

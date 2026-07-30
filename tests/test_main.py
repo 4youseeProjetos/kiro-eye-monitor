@@ -114,10 +114,24 @@ def test_relata_o_ritmo_do_ciclo(
     assert pace["credits_per_day"] > 0
 
 
+def _rodar_com_falha(tmp_path: Path, script: str) -> int:
+    """Roda o coletor com um kiro-cli falso, com log isolado no tmp_path."""
+    return main(
+        [
+            "--kiro-cli",
+            _kiro_cli_falso(tmp_path, script),
+            "--db",
+            str(tmp_path / "x.db"),
+            "--log",
+            str(tmp_path / "erros.jsonl"),
+        ]
+    )
+
+
 def test_falha_do_comando_vira_json_de_erro_com_codigo_um(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    codigo = main(["--kiro-cli", _kiro_cli_falso(tmp_path, "exit 0"), "--db", str(tmp_path / "x.db")])
+    codigo = _rodar_com_falha(tmp_path, "exit 0")
 
     saida = json.loads(capsys.readouterr().out)
 
@@ -128,11 +142,28 @@ def test_falha_do_comando_vira_json_de_erro_com_codigo_um(
 def test_output_ilegivel_vira_json_de_erro(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    codigo = main(
-        ["--kiro-cli", _kiro_cli_falso(tmp_path, 'echo "ola" >&2'), "--db", str(tmp_path / "x.db")]
-    )
+    codigo = _rodar_com_falha(tmp_path, 'echo "ola" >&2')
 
     saida = json.loads(capsys.readouterr().out)
 
     assert codigo == 1
     assert "covered in plan" in str(saida["error"])
+
+
+def test_falha_grava_log_com_ambiente_e_traceback(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    _rodar_com_falha(tmp_path, "exit 0")
+
+    saida = json.loads(capsys.readouterr().out)
+    registro = json.loads((tmp_path / "erros.jsonl").read_text(encoding="utf-8"))
+
+    assert saida["log_path"] == str(tmp_path / "erros.jsonl")
+    assert registro["ambiente"]["kiro_cli"].endswith("kiro-cli-falso")
+    assert "Traceback" in registro["traceback"]
+
+
+def test_sucesso_nao_escreve_no_log(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    _rodar(tmp_path, capsys, "--log", str(tmp_path / "erros.jsonl"))
+
+    assert not (tmp_path / "erros.jsonl").exists()

@@ -40,6 +40,7 @@ Add-Type -AssemblyName System.Drawing
 . "$PSScriptRoot\lib\UsageFormat.ps1"
 . "$PSScriptRoot\lib\UsageView.ps1"
 . "$PSScriptRoot\lib\BackgroundCall.ps1"
+. "$PSScriptRoot\lib\WindowLog.ps1"
 
 $script:PollIntervalMs = 250
 $script:ControlNames = @(
@@ -65,6 +66,20 @@ function Start-Collection {
         -ArgumentList @($script:Distro, $script:BridgeResolvido, [bool]$somenteConta)
 }
 
+function Write-CollectionFailure {
+    <# Registra a falha bruta e devolve o caminho do log, ou '' se nao houve falha. #>
+    param([AllowNull()][pscustomobject]$Report, [AllowEmptyString()][string]$Raw)
+
+    if (-not (Test-KiroCollectorFailure -Report $Report)) { return '' }
+    $contexto = @{
+        distro = $script:Distro
+        ponte  = $script:BridgeResolvido
+        log_wsl = if ($Report.PSObject.Properties.Name -contains 'log_path') { $Report.log_path } else { '' }
+    }
+    return (Write-WindowLogEntry -Path $script:LogPath -Message ([string]$Report.error) `
+            -Detail $Raw -Context $contexto)
+}
+
 function Complete-Collection {
     <# Colhe a coleta pendente, se ja terminou, e redesenha a janela. #>
     if ($null -eq $script:ColetaEmCurso) { return }
@@ -72,6 +87,7 @@ function Complete-Collection {
     $bruto = Receive-BackgroundCall -Call $script:ColetaEmCurso
     $script:ColetaEmCurso = $null
     $relatorio = ConvertFrom-KiroCollectorOutput -Raw $bruto
+    $null = Write-CollectionFailure -Report $relatorio -Raw ([string]$bruto)
     $nivel = Show-UsageReport -Ui $script:Ui -Report $relatorio `
         -WarnPercent $script:WarnPercent -CriticalPercent $script:CriticalPercent `
         -TopProjects $script:TopProjects
@@ -173,6 +189,7 @@ $script:ColetaEmCurso = $null
 $script:UltimoNivel = 'ok'
 $script:BridgeResolvido = Resolve-BridgePath -Informado $BridgePath -ScriptRoot $PSScriptRoot
 $script:IconPath = Join-Path $PSScriptRoot 'assets\eye.ico'
+$script:LogPath = Get-WindowLogPath -BaseDir $env:LOCALAPPDATA
 
 $script:MainWindow = New-UsageWindow -XamlPath (Join-Path $PSScriptRoot 'MainWindow.xaml')
 $null = Set-WindowIcon -Window $script:MainWindow -IconPath $script:IconPath

@@ -9,6 +9,10 @@ Os números da captura são de exemplo.
 
 ## Instalação
 
+A instalação roda **obrigatoriamente dentro do WSL**, nunca pelo PowerShell. É
+lá que os dados são lidos, e o PowerShell 5.1 trava ao executar scripts a partir
+de `\\wsl.localhost`. Não existe versão equivalente do instalador para o Windows.
+
 Abra o terminal do WSL e rode:
 
 ```bash
@@ -16,6 +20,15 @@ git clone https://github.com/4youseeProjetos/kiro-eye-monitor.git
 cd kiro-eye-monitor
 ./install.sh
 ```
+
+Se o seu terminal for o do Windows, entre no WSL no mesmo comando:
+
+```powershell
+wsl.exe -- bash -lc 'cd ~ && git clone https://github.com/4youseeProjetos/kiro-eye-monitor.git && cd kiro-eye-monitor && ./install.sh --desktop'
+```
+
+Clone dentro do WSL, como acima, e não em `/mnt/c`: funciona, mas a leitura dos
+arquivos de sessão fica lenta pelo sistema de arquivos do Windows.
 
 Se você já tem chave SSH na organização, pode usar:
 
@@ -130,6 +143,47 @@ O parser falha de forma explícita em vez de silenciosa: quando não encontra o 
 espera, a exceção cita o texto recebido e o formato esperado, e a janela mostra a
 mensagem na barra de status.
 
+## Quando algo falha
+
+Rode isto na máquina onde o problema aparece e mande a saída inteira:
+
+```bash
+./scripts/diagnostico.sh
+```
+
+Ele mostra distro, versões, onde o `kiro-cli` foi encontrado, a configuração
+gravada, os discos do Windows montados, uma coleta de teste feita com o PATH
+reduzido (o mesmo que o `wsl.exe` usa, onde a falha costuma aparecer) e as
+últimas falhas registradas. Não expõe token nem conteúdo de conversa.
+
+Toda falha é registrada em JSON, uma linha por evento, em dois lugares:
+
+| Onde | Arquivo | Guarda |
+| --- | --- | --- |
+| WSL | `~/.local/state/kiro-eye-monitor/erros.jsonl` | mensagem, ambiente e traceback do coletor |
+| Windows | `%LOCALAPPDATA%\kiro-eye-monitor\janela.jsonl` | falhas que nem chegam ao coletor, com a saída bruta do `wsl.exe` |
+
+O log do Windows fica fora da pasta de instalação de propósito: o instalador
+apaga e recria aquela pasta, o que levaria o histórico embora justamente quando
+se reinstala para tentar resolver o problema.
+
+## Caminhos detectados na instalação
+
+O `install.sh` descobre o `kiro-cli` usando o shell de login do desenvolvedor e
+grava o caminho absoluto em `~/.config/kiro-eye-monitor/config`. Isso existe
+porque o shell que o `wsl.exe` usa para chamar a ponte tem um PATH mínimo, sem
+`~/.local/bin`, e adivinhar aquele caminho só funcionava para quem instalou o
+kiro-cli no lugar padrão.
+
+Se a detecção não achar, e houver terminal, ele pergunta. Para informar direto:
+
+```bash
+./install.sh --kiro-cli /opt/kiro/bin/kiro-cli --sessions-dir /outro/lugar/sessions/cli
+```
+
+Caminho informado que não existe faz a instalação parar com a mensagem dizendo
+qual dos dois está errado, em vez de instalar algo que não vai funcionar.
+
 ## Desenvolvimento
 
 Testes do coletor (precisa de [uv](https://docs.astral.sh/uv/), usado só aqui):
@@ -165,6 +219,7 @@ scripts/collect.sh --account-only  # só o total da conta
 install.sh                comando único de instalação (roda no WSL)
 AGENTS.md                 roteiro de instalação para agentes
 scripts/collect.sh        ponte chamada pelo Windows via wsl.exe
+scripts/diagnostico.sh    retrato do ambiente para diagnosticar falha remota
 src/kiro_eye_monitor/     coletor: parser do /usage, leitor de sessões,
                           agregador, ritmo do ciclo, gerador do ícone
 windows/                  janela WPF, libs PowerShell e gerador de atalhos

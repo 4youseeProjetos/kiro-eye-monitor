@@ -16,10 +16,13 @@ PROJECT_DIR=$(cd -- "$(dirname -- "$0")" && pwd)
 WIN_ROOT=''
 POWERSHELL=''
 APP_TITLE='kiro-eye-monitor'
+REPO_URL='https://github.com/4youseeProjetos/kiro-eye-monitor.git'
 WINDOW_SCRIPT='Start-KiroEyeMonitor.ps1'
 ADD_DESKTOP=''
 ADD_STARTUP=''
 ASSUME_YES=''
+KIRO_CLI_PATH=''
+SESSIONS_PATH=''
 
 falhar() {
     printf 'erro: %s\n' "$1" >&2
@@ -33,6 +36,8 @@ uso: ./install.sh [opcoes]
   --desktop      cria atalho na area de trabalho sem perguntar
   --no-desktop   nao cria atalho na area de trabalho
   --startup      abre junto com o Windows
+  --kiro-cli C   caminho do kiro-cli, se a deteccao nao achar
+  --sessions-dir D  diretorio de sessoes do kiro-cli, se nao for o padrao
   -y, --yes      aceita os padroes (atalho na area de trabalho: sim)
   -h, --help     mostra esta ajuda
 FIM
@@ -44,6 +49,8 @@ ler_argumentos() {
             --desktop) ADD_DESKTOP='sim' ;;
             --no-desktop) ADD_DESKTOP='nao' ;;
             --startup) ADD_STARTUP='sim' ;;
+            --kiro-cli) shift; [ $# -gt 0 ] || falhar '--kiro-cli exige um caminho'; KIRO_CLI_PATH="$1" ;;
+            --sessions-dir) shift; [ $# -gt 0 ] || falhar '--sessions-dir exige um caminho'; SESSIONS_PATH="$1" ;;
             -y|--yes) ASSUME_YES='sim' ;;
             -h|--help) uso; exit 0 ;;
             *) uso >&2; falhar "argumento desconhecido: $1" ;;
@@ -80,8 +87,17 @@ powershell_em() {
 }
 
 exigir_wsl() {
-    [ -n "${WSL_DISTRO_NAME:-}" ] ||
-        falhar 'rode este script de dentro do WSL (variavel WSL_DISTRO_NAME vazia)'
+    if [ -z "${WSL_DISTRO_NAME:-}" ]; then
+        printf 'erro: este instalador roda obrigatoriamente dentro do WSL.\n' >&2
+        printf '      WSL_DISTRO_NAME esta vazio, ou seja, nao ha distro em volta deste shell.\n' >&2
+        printf '      O coletor le os dados de dentro do WSL e o PowerShell 5.1 trava ao\n' >&2
+        printf '      executar scripts a partir de \\\\wsl.localhost, entao nao ha versao\n' >&2
+        printf '      equivalente para o PowerShell.\n\n' >&2
+        printf '      Do terminal do Windows, entre no WSL e repita a instalacao:\n' >&2
+        printf "        wsl.exe -- bash -lc 'cd ~ && git clone %s kiro-eye-monitor && cd kiro-eye-monitor && ./install.sh --desktop'\n" \
+            "$REPO_URL" >&2
+        exit 1
+    fi
     resolver_windows ||
         falhar "powershell.exe nao encontrado nos discos do Windows ($(listar_discos_windows | tr '\n' ' ')); a interoperabilidade com o Windows esta desligada em /etc/wsl.conf?"
 }
@@ -95,6 +111,73 @@ avisar_sobre_kiro_cli() {
     command -v kiro-cli >/dev/null 2>&1 && return 0
     printf 'aviso: kiro-cli nao esta no PATH desta distro.\n'
     printf '       A janela abre, mas mostra falha ate o kiro-cli ser instalado e logado.\n'
+}
+
+detectar_kiro_cli() {
+    # O shell de login do desenvolvedor conhece o PATH completo; o shell que o
+    # wsl.exe usa para chamar a ponte, nao. Por isso o caminho absoluto e
+    # descoberto aqui e gravado na configuracao.
+    local achado=''
+    achado=$(command -v kiro-cli 2>/dev/null || true)
+    [ -n "$achado" ] || achado=$("$SHELL" -lc 'command -v kiro-cli' 2>/dev/null || true)
+    printf '%s' "$achado"
+}
+
+detectar_sessoes() {
+    # Respeita KIRO_HOME, que o proprio kiro-cli usa para mudar de lugar.
+    local base="${KIRO_HOME:-$HOME/.kiro}"
+    [ -d "$base/sessions/cli" ] && printf '%s' "$base/sessions/cli"
+}
+
+perguntar_caminho() {
+    # perguntar_caminho <pergunta> — vazio se nao houver terminal, para nao
+    # travar instalacao por agente nem com -y.
+    local resposta=''
+    [ -t 0 ] || return 0
+    [ -n "$ASSUME_YES" ] && return 0
+    printf '%s\n' "$1" >&2
+    printf 'caminho (Enter para deixar em branco): ' >&2
+    read -r resposta || resposta=''
+    printf '%s' "$resposta"
+}
+
+resolver_kiro_cli() {
+    [ -n "$KIRO_CLI_PATH" ] && return 0
+    KIRO_CLI_PATH=$(detectar_kiro_cli)
+    [ -n "$KIRO_CLI_PATH" ] && return 0
+    KIRO_CLI_PATH=$(perguntar_caminho 'Nao achei o kiro-cli. Se ele existe nesta distro, informe o caminho.')
+}
+
+resolver_sessoes() {
+    [ -n "$SESSIONS_PATH" ] && return 0
+    SESSIONS_PATH=$(detectar_sessoes)
+    [ -n "$SESSIONS_PATH" ] && return 0
+    SESSIONS_PATH=$(perguntar_caminho 'Nao achei ~/.kiro/sessions/cli. Informe o caminho, se souber.')
+}
+
+validar_caminhos() {
+    if [ -n "$KIRO_CLI_PATH" ] && [ ! -x "$KIRO_CLI_PATH" ]; then
+        falhar "kiro-cli informado nao e executavel: $KIRO_CLI_PATH"
+    fi
+    if [ -n "$SESSIONS_PATH" ] && [ ! -d "$SESSIONS_PATH" ]; then
+        falhar "diretorio de sessoes informado nao existe: $SESSIONS_PATH"
+    fi
+}
+
+gravar_configuracao() {
+    # Lida pelo scripts/collect.sh a cada coleta.
+    local config="${XDG_CONFIG_HOME:-$HOME/.config}/kiro-eye-monitor/config"
+    mkdir -p "$(dirname "$config")"
+    {
+        printf '# Gerado por install.sh em %s\n' "$(date -Is)"
+        [ -n "$KIRO_CLI_PATH" ] && printf 'KIRO_CLI=%s\n' "$KIRO_CLI_PATH"
+        [ -n "$SESSIONS_PATH" ] && printf 'SESSIONS_DIR=%s\n' "$SESSIONS_PATH"
+        printf 'PYTHON=%s\n' "$(command -v python3)"
+    } >"$config"
+    printf 'config: %s\n' "$config"
+    [ -n "$KIRO_CLI_PATH" ] && printf 'kiro-cli: %s\n' "$KIRO_CLI_PATH"
+    [ -n "$SESSIONS_PATH" ] && printf 'sessoes: %s\n' "$SESSIONS_PATH"
+    return 0
 }
 
 perguntar() {
@@ -186,6 +269,10 @@ main() {
 
     printf 'distro: %s\n' "$WSL_DISTRO_NAME"
     avisar_sobre_kiro_cli
+    resolver_kiro_cli
+    resolver_sessoes
+    validar_caminhos
+    gravar_configuracao
     resolver_desktop
 
     local instalacao_win instalacao_wsl

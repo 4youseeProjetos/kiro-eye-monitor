@@ -8,12 +8,26 @@ curto de propósito: quase tudo já está automatizado no `install.sh`.
 
 ## Instalar
 
-Rode **de dentro do WSL** (não do PowerShell):
+**Obrigatório: rode dentro do WSL.** Não adapte para PowerShell, não traduza os
+comandos, não tente uma alternativa. O coletor lê os dados de dentro do WSL e o
+PowerShell 5.1 trava ao executar scripts a partir de `\\wsl.localhost` — não
+existe caminho equivalente pelo Windows.
+
+Confira primeiro em que ambiente você está: `echo $WSL_DISTRO_NAME` precisa
+retornar o nome de uma distro. Se retornar vazio, você está fora do WSL.
+
+Dentro do WSL:
 
 ```bash
 git clone https://github.com/4youseeProjetos/kiro-eye-monitor.git ~/kiro-eye-monitor
 cd ~/kiro-eye-monitor
 ./install.sh --desktop
+```
+
+Se a sua sessão é do lado Windows, entre no WSL no próprio comando:
+
+```powershell
+wsl.exe -- bash -lc 'cd ~ && git clone https://github.com/4youseeProjetos/kiro-eye-monitor.git && cd kiro-eye-monitor && ./install.sh --desktop'
 ```
 
 O `install.sh` detecta a distro, copia a janela para `%LOCALAPPDATA%\KiroEyeMonitor`,
@@ -50,11 +64,15 @@ A janela em si aparece com o título **kiro-eye-monitor**.
 | `{"error":"python3 nao encontrado..."}` | falta python3 na distro |
 | Janela mostra "Falha: executavel nao encontrado: 'kiro-cli'" | kiro-cli não está no PATH da distro |
 | Caixa de diálogo `distro WSL 'X' nao existe nesta maquina` | nome de distro errado; a própria mensagem lista as instaladas |
+| Qualquer falha sem causa óbvia | rode `./scripts/diagnostico.sh` e leia a saída antes de mexer em qualquer coisa |
 | PowerShell travado ao rodar um `.ps1` | tentou executar a partir de `\\wsl.localhost`; a instalação começa no WSL justamente por isso |
 
 ## Não faça
 
 - Não rode `install.sh` pelo PowerShell nem por caminho UNC.
+- Não pergunte ao usuário caminhos que o `install.sh` detecta sozinho. Use
+  `--kiro-cli` ou `--sessions-dir` apenas quando a detecção falhar e você já
+  souber o caminho certo.
 - Não passe `-Distro Ubuntu` por palpite. O parâmetro é opcional: sem ele o app
   usa a distro padrão do WSL. Nomes como `Ubuntu-24.04` são comuns e `Ubuntu`
   cravado quebra a chamada do `wsl.exe`.
