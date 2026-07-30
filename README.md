@@ -12,15 +12,15 @@ Os números da captura são de exemplo.
 Abra o terminal do WSL e rode:
 
 ```bash
-git clone git@github.com:4youseeProjetos/kiro-eye-monitor.git
+git clone https://github.com/4youseeProjetos/kiro-eye-monitor.git
 cd kiro-eye-monitor
 ./install.sh
 ```
 
-Sem chave SSH configurada, use HTTPS:
+Se você já tem chave SSH na organização, pode usar:
 
 ```bash
-git clone https://github.com/4youseeProjetos/kiro-eye-monitor.git
+git clone git@github.com:4youseeProjetos/kiro-eye-monitor.git
 ```
 
 O script pergunta se você quer um atalho na área de trabalho, instala a janela em
