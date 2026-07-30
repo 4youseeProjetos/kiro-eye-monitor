@@ -12,11 +12,14 @@
     powershell -ExecutionPolicy Bypass -File .\Start-KiroEyeMonitor.ps1
 
     .EXAMPLE
-    .\Start-KiroEyeMonitor.ps1 -Distro Ubuntu -BridgePath /home/dev/app/scripts/collect.sh
+    .\Start-KiroEyeMonitor.ps1 -Distro Ubuntu-24.04 -BridgePath /home/dev/app/scripts/collect.sh
 #>
 [CmdletBinding()]
 param(
-    [string]$Distro = 'Ubuntu',
+    # Vazio significa "a distro padrao do WSL desta maquina". Nao ha nome
+    # cravado: o nome varia entre desenvolvedores (Ubuntu, Ubuntu-24.04, Debian)
+    # e o wsl.exe exige o nome exato.
+    [string]$Distro = '',
     [string]$BridgePath = '',
     [ValidateRange(1, 120)][int]$RefreshMinutes = 5,
     [ValidateRange(1, 100)][int]$WarnPercent = 75,
@@ -32,6 +35,7 @@ Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
 
 . "$PSScriptRoot\lib\WslPath.ps1"
+. "$PSScriptRoot\lib\WslDistro.ps1"
 . "$PSScriptRoot\lib\KiroCollector.ps1"
 . "$PSScriptRoot\lib\UsageFormat.ps1"
 . "$PSScriptRoot\lib\UsageView.ps1"
@@ -50,15 +54,6 @@ $script:TrabalhoDeColeta = {
     $wslArgs = @('-d', $Distro, '--', $BridgePath)
     if ($AccountOnly) { $wslArgs += '--account-only' }
     & wsl.exe @wslArgs 2>&1
-}
-
-function Resolve-BridgePath {
-    <# Caminho da ponte dentro do WSL, derivado da pasta do script se omitido. #>
-    param([string]$Informado, [Parameter(Mandatory)][string]$ScriptRoot)
-
-    if (-not [string]::IsNullOrWhiteSpace($Informado)) { return $Informado }
-    $projeto = Split-Path -Parent $ScriptRoot
-    return (Convert-WindowsPathToWslPath -Path $projeto).TrimEnd('/') + '/scripts/collect.sh'
 }
 
 function Start-Collection {
@@ -142,7 +137,34 @@ function Start-Timers {
     return @($poll, $auto)
 }
 
-$script:Distro = $Distro
+function Resolve-DistroOrAlert {
+    <#
+        .SYNOPSIS
+        Resolve a distro e, se nao der, avisa em caixa de dialogo.
+        .DESCRIPTION
+        A janela abre com console oculto, entao erro em texto nao chega ao
+        usuario: sem a caixa de dialogo, o duplo clique no atalho pareceria
+        nao fazer nada.
+        .EXAMPLE
+        $distro = Resolve-DistroOrAlert -Requested $Distro
+    #>
+    param([AllowEmptyString()][string]$Requested)
+
+    $inventario = Get-WslDistroInventory
+    try {
+        return Resolve-WslDistroName -Requested $Requested `
+            -Installed $inventario.Names -Default $inventario.Default
+    }
+    catch {
+        [System.Windows.Forms.MessageBox]::Show(
+            $_.Exception.Message, 'kiro-eye-monitor',
+            [System.Windows.Forms.MessageBoxButtons]::OK,
+            [System.Windows.Forms.MessageBoxIcon]::Error) | Out-Null
+        exit 1
+    }
+}
+
+$script:Distro = Resolve-DistroOrAlert -Requested $Distro
 $script:RefreshMinutes = $RefreshMinutes
 $script:WarnPercent = $WarnPercent
 $script:CriticalPercent = $CriticalPercent

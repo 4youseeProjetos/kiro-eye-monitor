@@ -49,11 +49,15 @@ A janela em si aparece com o título **kiro-eye-monitor**.
 | `install.sh` reclama de `WSL_DISTRO_NAME` vazio | rodou fora do WSL |
 | `{"error":"python3 nao encontrado..."}` | falta python3 na distro |
 | Janela mostra "Falha: executavel nao encontrado: 'kiro-cli'" | kiro-cli não está no PATH da distro |
+| Caixa de diálogo `distro WSL 'X' nao existe nesta maquina` | nome de distro errado; a própria mensagem lista as instaladas |
 | PowerShell travado ao rodar um `.ps1` | tentou executar a partir de `\\wsl.localhost`; a instalação começa no WSL justamente por isso |
 
 ## Não faça
 
 - Não rode `install.sh` pelo PowerShell nem por caminho UNC.
+- Não passe `-Distro Ubuntu` por palpite. O parâmetro é opcional: sem ele o app
+  usa a distro padrão do WSL. Nomes como `Ubuntu-24.04` são comuns e `Ubuntu`
+  cravado quebra a chamada do `wsl.exe`.
 - Não commite nem faça push sem o usuário pedir.
 - Não altere o `LICENSE` nem o titular do copyright.
 

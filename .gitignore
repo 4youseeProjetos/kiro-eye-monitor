@@ -17,3 +17,6 @@ build/
 # Windows
 Thumbs.db
 desktop.ini
+
+# Anotacao gerada pelo instalador com o caminho da ponte no WSL.
+windows/bridge-path.txt

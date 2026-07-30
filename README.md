@@ -58,6 +58,8 @@ propagar as mudanças.
 ## Requisitos
 
 - WSL com interoperabilidade Windows ligada (o padrão).
+- Qualquer nome de distro serve: a instalação detecta em qual você está. Havendo
+  mais de uma, instale de dentro daquela onde o `kiro-cli` está logado.
 - `python3` na distro — só a biblioteca padrão, sem pacotes extras.
 - `kiro-cli` instalado e logado na distro. Sem ele a janela abre, mas mostra a
   falha em vez dos números.
@@ -175,6 +177,11 @@ Anotadas porque custaram tempo e não são óbvias:
 
 - O comando `/usage` do kiro-cli escreve o painel em **stderr**, não em stdout.
   Ler só stdout devolve string vazia com código de saída 0.
+- O `wsl.exe` exige o **nome exato** da distro, e esse nome muda de máquina para
+  máquina: `Ubuntu`, `Ubuntu-24.04`, `Debian`. Nada é presumido — a distro sai da
+  detecção durante a instalação e, na falta dela, da distro padrão registrada em
+  `HKCU:\Software\Microsoft\Windows\CurrentVersion\Lxss`. Para forçar outra:
+  `-Distro Ubuntu-24.04`.
 - O PowerShell 5.1 **travava** ao executar script a partir de
   `\\wsl.localhost\...`. Por isso a instalação começa no WSL.
 - `WindowStartupLocation="CenterScreen"` posicionava a janela **fora do desktop**

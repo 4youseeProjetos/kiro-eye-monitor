@@ -83,8 +83,27 @@ function New-AppShortcut {
     return $destino
 }
 
+function Save-BridgePathNote {
+    <#
+        .SYNOPSIS
+        Anota a ponte na instalacao para o .ps1 funcionar sem argumentos.
+        .DESCRIPTION
+        A copia instalada nao fica dentro do projeto, entao nao ha como deduzir
+        o caminho do collect.sh a partir dela.
+        .EXAMPLE
+        Save-BridgePathNote -InstallDir $dir -BridgePath /home/dev/app/scripts/collect.sh
+    #>
+    param([Parameter(Mandatory)][string]$InstallDir, [Parameter(Mandatory)][string]$BridgePath)
+
+    $caminho = Join-Path $InstallDir 'bridge-path.txt'
+    Set-Content -LiteralPath $caminho -Value $BridgePath -Encoding ASCII
+    return $caminho
+}
+
 $argumentos = Get-WindowArgument -InstallDir $InstallDir -Distro $Distro -BridgePath $BridgePath
 $icone = Join-Path $InstallDir 'assets\eye.ico'
+
+$null = Save-BridgePathNote -InstallDir $InstallDir -BridgePath $BridgePath
 
 Write-Output "lancador:  $(New-Launcher -InstallDir $InstallDir -Arguments $argumentos)"
 

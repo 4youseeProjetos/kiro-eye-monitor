@@ -10,7 +10,11 @@
 set -euo pipefail
 
 PROJECT_DIR=$(cd -- "$(dirname -- "$0")" && pwd)
-POWERSHELL='/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe'
+# Preenchidos por resolver_windows: nada de caminho cravado. A letra do disco do
+# Windows pode nao ser C:, e a raiz de montagem muda com "root =" no
+# /etc/wsl.conf, entao os dois sao descobertos em tempo de execucao.
+WIN_ROOT=''
+POWERSHELL=''
 APP_TITLE='kiro-eye-monitor'
 WINDOW_SCRIPT='Start-KiroEyeMonitor.ps1'
 ADD_DESKTOP=''
@@ -48,11 +52,38 @@ ler_argumentos() {
     done
 }
 
+listar_discos_windows() {
+    # Pontos de montagem dos discos do Windows, como o WSL os expoe.
+    awk '$3 == "9p" || $3 == "drvfs" || $3 == "virtiofs" { print $2 }' /proc/mounts
+}
+
+resolver_windows() {
+    # Acha um disco montado que contenha a instalacao do Windows.
+    local disco
+    for disco in $(listar_discos_windows); do
+        if [ -x "$disco/Windows/System32/WindowsPowerShell/v1.0/powershell.exe" ]; then
+            WIN_ROOT="$disco"
+            POWERSHELL="$disco/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
+            return 0
+        fi
+    done
+    # Sobra o PATH de interoperabilidade, que o wsl.conf pode ter desligado.
+    POWERSHELL=$(command -v powershell.exe 2>/dev/null || true)
+    [ -n "$POWERSHELL" ] || return 1
+    WIN_ROOT='/'
+}
+
+powershell_em() {
+    # powershell_em <argumentos...> — roda de um diretorio que o Windows enxerga,
+    # porque o PowerShell reclama quando o diretorio atual e um caminho UNC.
+    (cd "$WIN_ROOT" && "$POWERSHELL" "$@")
+}
+
 exigir_wsl() {
     [ -n "${WSL_DISTRO_NAME:-}" ] ||
         falhar 'rode este script de dentro do WSL (variavel WSL_DISTRO_NAME vazia)'
-    [ -x "$POWERSHELL" ] ||
-        falhar "powershell.exe nao encontrado em $POWERSHELL; a interoperabilidade com o Windows esta desligada?"
+    resolver_windows ||
+        falhar "powershell.exe nao encontrado nos discos do Windows ($(listar_discos_windows | tr '\n' ' ')); a interoperabilidade com o Windows esta desligada em /etc/wsl.conf?"
 }
 
 exigir_python() {
@@ -92,7 +123,7 @@ resolver_desktop() {
 
 local_appdata_windows() {
     # Pergunta ao proprio Windows para nao chutar o nome do usuario.
-    (cd /mnt/c && "$POWERSHELL" -NoProfile -Command '[Console]::Out.Write($env:LOCALAPPDATA)') |
+    powershell_em -NoProfile -Command '[Console]::Out.Write($env:LOCALAPPDATA)' |
         tr -d '\r\0'
 }
 
@@ -102,10 +133,10 @@ encerrar_instancia_aberta() {
     # A busca e pela linha de comando do processo, e nao pelo titulo da janela:
     # o titulo pode mudar entre versoes, e uma instancia com titulo antigo
     # sobreviveria ao encerramento e travaria a copia.
-    (cd /mnt/c && "$POWERSHELL" -NoProfile -Command \
+    powershell_em -NoProfile -Command \
         "Get-CimInstance Win32_Process -Filter \"Name='powershell.exe'\" |
          Where-Object { \$_.CommandLine -like '*$WINDOW_SCRIPT*' } |
-         ForEach-Object { Stop-Process -Id \$_.ProcessId -Force }") >/dev/null 2>&1 || true
+         ForEach-Object { Stop-Process -Id \$_.ProcessId -Force }" >/dev/null 2>&1 || true
     sleep 1
 }
 
@@ -124,26 +155,26 @@ gerar_atalhos() {
     local opcoes=()
     [ "$ADD_DESKTOP" = 'sim' ] && opcoes+=('-AddToDesktop')
     [ -n "$ADD_STARTUP" ] && opcoes+=('-AddToStartup')
-    (cd /mnt/c && "$POWERSHELL" -NoProfile -ExecutionPolicy Bypass \
+    powershell_em -NoProfile -ExecutionPolicy Bypass \
         -File "$instalacao\\New-KiroEyeMonitorLauncher.ps1" \
         -BridgePath "$PROJECT_DIR/scripts/collect.sh" \
         -Distro "$WSL_DISTRO_NAME" \
         -InstallDir "$instalacao" \
-        "${opcoes[@]+"${opcoes[@]}"}")
+        "${opcoes[@]+"${opcoes[@]}"}"
 }
 
 abrir_app() {
     # abrir_app <install dir windows>
-    (cd /mnt/c && "$POWERSHELL" -NoProfile -Command \
-        "Start-Process -FilePath '$1\\Start-KiroEyeMonitor.cmd' -WindowStyle Hidden") >/dev/null 2>&1
+    powershell_em -NoProfile -Command \
+        "Start-Process -FilePath '$1\\Start-KiroEyeMonitor.cmd' -WindowStyle Hidden" >/dev/null 2>&1
 }
 
 atualizar_cache_de_icones() {
     # O Explorer guarda o icone dos atalhos em iconcache_*.db e continuaria
     # mostrando a versao anterior depois de trocar o eye.ico. O ie4uinit
     # recarrega os icones do shell sem reiniciar o Explorer.
-    (cd /mnt/c && "$POWERSHELL" -NoProfile -Command \
-        'Start-Process -FilePath "$env:SystemRoot\System32\ie4uinit.exe" -ArgumentList "-show" -Wait') \
+    powershell_em -NoProfile -Command \
+        'Start-Process -FilePath "$env:SystemRoot\System32\ie4uinit.exe" -ArgumentList "-show" -Wait' \
         >/dev/null 2>&1 || true
 }
 
