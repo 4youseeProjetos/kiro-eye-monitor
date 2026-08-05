@@ -6,6 +6,32 @@
 
 Set-StrictMode -Version Latest
 
+function Set-KiroCollectorEncoding {
+    <#
+        .SYNOPSIS
+        Faz o PowerShell decodificar a saida do coletor como UTF-8.
+
+        .DESCRIPTION
+        O coletor emite JSON em UTF-8, e desde a aba de analise esse JSON carrega
+        texto do desenvolvedor: o titulo de cada conversa. Sem este ajuste o
+        PowerShell decodifica a saida do wsl.exe com a pagina de codigo do console
+        (CP850 no Windows em portugues) e "pesquisa" chega quebrado na janela.
+
+        Devolve $false quando nao ha console para configurar, em vez de estourar:
+        a janela vale mais que o acento.
+
+        .EXAMPLE
+        $null = Set-KiroCollectorEncoding
+    #>
+    try {
+        [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+        return $true
+    }
+    catch {
+        return $false
+    }
+}
+
 function New-KiroCollectorConfig {
     <#
         .SYNOPSIS
@@ -78,4 +104,49 @@ function Test-KiroCollectorFailure {
 
     if ($null -eq $Report) { return $true }
     return [bool]($Report.PSObject.Properties.Name -contains 'error')
+}
+
+function Test-KiroReportHasDetail {
+    <#
+        .SYNOPSIS
+        Indica se o relatorio traz o detalhamento do kiro-cli.
+        .DESCRIPTION
+        Checa a existencia da propriedade antes do valor porque o relatorio de
+        falha nem tem a chave, e Set-StrictMode transforma esse acesso em erro.
+        .EXAMPLE
+        if (Test-KiroReportHasDetail -Report $relatorio) { ... }
+    #>
+    param([AllowNull()][pscustomobject]$Report)
+
+    if ($null -eq $Report) { return $false }
+    if ($Report.PSObject.Properties.Name -notcontains 'cli_breakdown') { return $false }
+    return $null -ne $Report.cli_breakdown
+}
+
+function Get-KiroReportList {
+    <#
+        .SYNOPSIS
+        Lista de uma propriedade do relatorio, vazia quando o coletor nao a manda.
+        .DESCRIPTION
+        Tolera coletor mais antigo que a janela: quem faz git pull sem reinstalar
+        fica com as duas metades em versoes diferentes, e a janela nao pode
+        morrer por causa de uma chave nova que ainda nao existe do outro lado.
+
+        Devolve uma List, e nao @(), porque array vazio devolvido por funcao e
+        desenrolado para $null pelo PowerShell — e ai .Count estoura sob
+        Set-StrictMode.
+        .EXAMPLE
+        Get-KiroReportList -Source $Report.cli_breakdown -Name 'by_day'
+    #>
+    param(
+        [Parameter(Mandatory)][pscustomobject]$Source,
+        [Parameter(Mandatory)][string]$Name
+    )
+    $itens = New-Object 'System.Collections.Generic.List[object]'
+    if ($Source.PSObject.Properties.Name -contains $Name) {
+        foreach ($item in @($Source.$Name)) {
+            if ($null -ne $item) { $itens.Add($item) }
+        }
+    }
+    return , $itens
 }

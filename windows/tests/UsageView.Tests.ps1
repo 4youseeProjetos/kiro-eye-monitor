@@ -11,7 +11,9 @@ $script:XamlPath = Join-Path (Split-Path -Parent $PSScriptRoot) 'MainWindow.xaml
 $script:Nomes = @(
     'ErrorPanel', 'ErrorText', 'ErrorHintText',
     'PlanText', 'HeadlineText', 'UsageBar', 'PercentText', 'BurnText', 'ProjectionText',
-    'DetailToggle', 'DetailPanel', 'CliTotalText', 'ProjectList', 'UnattributedText',
+    'CliTotalText', 'ProjectList', 'UnattributedText',
+    'MainTabs', 'SummaryTab', 'AnalysisTab',
+    'DaySummaryText', 'DayList', 'ChatSummaryText', 'ChatList',
     'StatusText', 'RefreshButton'
 )
 
@@ -57,6 +59,31 @@ function New-TestReport {
                 [pscustomobject]@{ label = '/home/dev/painel-interno'; credits = 261.49; turn_count = 40 }
             )
             by_model      = @()
+            by_day        = @(
+                [pscustomobject]@{ day = '2026-07-30'; credits = 3.03; turn_count = 1; chat_count = 1 },
+                [pscustomobject]@{ day = '2026-07-29'; credits = 119.07; turn_count = 27; chat_count = 5 },
+                [pscustomobject]@{ day = '2026-07-28'; credits = 1.82; turn_count = 1; chat_count = 1 }
+            )
+            by_chat       = @(
+                [pscustomobject]@{
+                    session_id   = 'ffc49450-8e41-42a1-9d38-7441322e2676'
+                    title        = "revisar o parser do /usage`ne o agregador"
+                    project_path = '/home/dev/loja-online'
+                    credits      = 84.55
+                    turn_count   = 15
+                    first_turn_at = '2026-07-29T11:57:54+00:00'
+                    last_turn_at  = '2026-07-30T13:00:06+00:00'
+                },
+                [pscustomobject]@{
+                    session_id   = '0912b62a-0d3a-46f2-b349-a65e8bd58b8e'
+                    title        = 'ajustar o instalador'
+                    project_path = '/home/dev/painel-interno'
+                    credits      = 21.4
+                    turn_count   = 6
+                    first_turn_at = '2026-07-28T09:10:00+00:00'
+                    last_turn_at  = '2026-07-28T10:30:00+00:00'
+                }
+            )
         }
         $relatorio.unattributed_credits = 817.54
     }
@@ -90,8 +117,8 @@ Describe 'Show-UsageReport com o total da conta' {
 
     It 'registra o horario da coleta' { $ui.StatusText.Text | Should Match '^Atualizado ' }
 
-    It 'convida a marcar a caixa quando nao ha detalhamento' {
-        $ui.CliTotalText.Text | Should Match 'Marque a caixa'
+    It 'diz que a leitura veio sem detalhamento, em vez de deixar tracinho' {
+        $ui.CliTotalText.Text | Should Match 'Sem detalhamento'
     }
 
     It 'nao mostra linha de nao atribuido sem detalhamento' {
@@ -134,6 +161,152 @@ Describe 'Show-UsageReport limitando a lista' {
         $null = Show-UsageReport -Ui $ui -Report (New-TestReport) `
             -WarnPercent 75 -CriticalPercent 90 -TopProjects 1
         @($ui.ProjectList.ItemsSource).Count | Should Be 1
+    }
+}
+
+Describe 'Aba de analise com as series por dia e por chat' {
+
+    $ui = New-TestUi
+    $null = Show-UsageReport -Ui $ui -Report (New-TestReport) `
+        -WarnPercent 75 -CriticalPercent 90 -TopProjects 8
+
+    It 'existe a aba de analise no XAML' {
+        $ui.AnalysisTab | Should Not BeNullOrEmpty
+        $ui.AnalysisTab.Header | Should Be 'Analise'
+    }
+
+    It 'a aba aberta ao iniciar continua sendo o resumo' {
+        $ui.SummaryTab.IsSelected | Should Be $true
+    }
+
+    It 'resume os dias com consumo do ciclo' {
+        $ui.DaySummaryText.Text | Should Match '^3 dias com consumo'
+    }
+
+    It 'lista um dia por linha, do mais recente para o mais antigo' {
+        @($ui.DayList.ItemsSource).Count | Should Be 3
+        @($ui.DayList.ItemsSource)[0].Dia | Should Match '30/07'
+    }
+
+    It 'a barra do dia de pico e a mais larga' {
+        $linhas = @($ui.DayList.ItemsSource)
+        $linhas[1].Largura | Should BeGreaterThan $linhas[0].Largura
+    }
+
+    It 'guarda turnos e conversas do dia na dica' {
+        @($ui.DayList.ItemsSource)[1].Dica | Should Match '27 turnos em 5 conversas'
+    }
+
+    It 'resume as conversas e o peso da maior' {
+        $ui.ChatSummaryText.Text | Should Match '^2 conversas'
+        $ui.ChatSummaryText.Text | Should Match '% do consumo'
+    }
+
+    It 'lista as conversas da mais cara para a mais barata' {
+        @($ui.ChatList.ItemsSource)[0].Titulo | Should Match 'revisar o parser'
+        @($ui.ChatList.ItemsSource)[1].Titulo | Should Be 'ajustar o instalador'
+    }
+
+    It 'titulo de varias linhas cabe em uma linha' {
+        @($ui.ChatList.ItemsSource)[0].Titulo | Should Not Match "`n"
+    }
+
+    It 'a segunda linha da conversa traz projeto, turnos e ultimo uso' {
+        $detalhe = @($ui.ChatList.ItemsSource)[0].Detalhe
+        $detalhe | Should Match 'loja-online'
+        $detalhe | Should Match '15 turnos'
+        $detalhe | Should Match 'ultimo em'
+    }
+
+    It 'a dica preserva o titulo inteiro e o caminho do projeto' {
+        @($ui.ChatList.ItemsSource)[0].Dica | Should Match '/home/dev/loja-online'
+    }
+}
+
+Describe 'Aba de analise limitando as listas' {
+
+    It 'respeita o topo de dias e de conversas' {
+        $ui = New-TestUi
+        $null = Show-UsageReport -Ui $ui -Report (New-TestReport) `
+            -WarnPercent 75 -CriticalPercent 90 -TopProjects 8 -TopDays 2 -TopChats 1
+        @($ui.DayList.ItemsSource).Count | Should Be 2
+        @($ui.ChatList.ItemsSource).Count | Should Be 1
+    }
+
+    It 'por padrao mostra no maximo os cinco dias mais recentes com consumo' {
+        $ui = New-TestUi
+        $relatorio = New-TestReport
+        $relatorio.cli_breakdown.by_day = @(
+            [pscustomobject]@{ day = '2026-07-30'; credits = 9.0; turn_count = 2; chat_count = 1 },
+            [pscustomobject]@{ day = '2026-07-29'; credits = 8.0; turn_count = 2; chat_count = 1 },
+            [pscustomobject]@{ day = '2026-07-28'; credits = 7.0; turn_count = 2; chat_count = 1 },
+            [pscustomobject]@{ day = '2026-07-27'; credits = 6.0; turn_count = 2; chat_count = 1 },
+            [pscustomobject]@{ day = '2026-07-26'; credits = 5.0; turn_count = 2; chat_count = 1 },
+            [pscustomobject]@{ day = '2026-07-25'; credits = 4.0; turn_count = 2; chat_count = 1 },
+            [pscustomobject]@{ day = '2026-07-24'; credits = 3.0; turn_count = 2; chat_count = 1 }
+        )
+        $null = Show-UsageReport -Ui $ui -Report $relatorio `
+            -WarnPercent 75 -CriticalPercent 90 -TopProjects 8
+
+        @($ui.DayList.ItemsSource).Count | Should Be 5
+        @($ui.DayList.ItemsSource)[0].Dia | Should Match '30/07'
+        @($ui.DayList.ItemsSource)[4].Dia | Should Match '26/07'
+    }
+
+    It 'o resumo avisa que a lista de dias foi cortada' {
+        $ui = New-TestUi
+        $relatorio = New-TestReport
+        $relatorio.cli_breakdown.by_day = @(
+            [pscustomobject]@{ day = '2026-07-30'; credits = 9.0; turn_count = 2; chat_count = 1 },
+            [pscustomobject]@{ day = '2026-07-29'; credits = 8.0; turn_count = 2; chat_count = 1 },
+            [pscustomobject]@{ day = '2026-07-28'; credits = 7.0; turn_count = 2; chat_count = 1 },
+            [pscustomobject]@{ day = '2026-07-27'; credits = 6.0; turn_count = 2; chat_count = 1 },
+            [pscustomobject]@{ day = '2026-07-26'; credits = 5.0; turn_count = 2; chat_count = 1 },
+            [pscustomobject]@{ day = '2026-07-25'; credits = 4.0; turn_count = 2; chat_count = 1 }
+        )
+        $null = Show-UsageReport -Ui $ui -Report $relatorio `
+            -WarnPercent 75 -CriticalPercent 90 -TopProjects 8
+
+        $ui.DaySummaryText.Text | Should Match '^6 dias com consumo \(lista: os 5 mais recentes\)'
+    }
+}
+
+Describe 'Aba de analise sem detalhamento carregado' {
+
+    $ui = New-TestUi
+    $null = Show-UsageReport -Ui $ui -Report (New-TestReport -SemDetalhe) `
+        -WarnPercent 75 -CriticalPercent 90 -TopProjects 8
+
+    It 'esvazia as listas' {
+        @($ui.DayList.ItemsSource).Count | Should Be 0
+        @($ui.ChatList.ItemsSource).Count | Should Be 0
+    }
+
+    It 'diz que a leitura veio sem detalhamento, em vez de deixar tracinho' {
+        $ui.DaySummaryText.Text | Should Match 'Sem detalhamento'
+        $ui.ChatSummaryText.Text | Should Match 'Sem detalhamento'
+    }
+}
+
+Describe 'Aba de analise com coletor mais antigo que a janela' {
+
+    It 'relatorio sem by_day nem by_chat nao derruba a renderizacao' {
+        # Quem faz git pull sem reinstalar fica com as duas metades em versoes
+        # diferentes; a janela precisa sobreviver a chave que ainda nao existe.
+        $ui = New-TestUi
+        $antigo = New-TestReport
+        $antigo.cli_breakdown = [pscustomobject]@{
+            period_start  = '2026-07-01'
+            total_credits = 10.0
+            turn_count    = 2
+            by_project    = @()
+            by_model      = @()
+        }
+        $null = Show-UsageReport -Ui $ui -Report $antigo `
+            -WarnPercent 75 -CriticalPercent 90 -TopProjects 8
+
+        @($ui.DayList.ItemsSource).Count | Should Be 0
+        $ui.DaySummaryText.Text | Should Match 'Nenhum turno'
     }
 }
 
@@ -196,6 +369,12 @@ Describe 'Show-UsageReport quando a coleta falha' {
     It 'deixa claro que os numeros nao sao validos' {
         $ui.HeadlineText.Text | Should Be 'sem dados'
         $ui.PercentText.Text | Should Be ''
+    }
+
+    It 'limpa a aba de analise, que tambem depende da coleta' {
+        $ui.DaySummaryText.Text | Should Be 'sem dados'
+        $ui.ChatSummaryText.Text | Should Be 'sem dados'
+        @($ui.DayList.ItemsSource).Count | Should Be 0
     }
 
     It 'registra o horario da tentativa' {

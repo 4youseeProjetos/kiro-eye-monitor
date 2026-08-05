@@ -20,13 +20,14 @@ from kiro_eye_monitor.cycle_pace import cycle_pace_from
 from kiro_eye_monitor.models import AccountUsage, UsageReport, UsageSnapshot
 from kiro_eye_monitor.session_reader import SessionReader
 from kiro_eye_monitor.snapshot_store import SnapshotStore
+from kiro_eye_monitor.timeline import LocalTime
 from kiro_eye_monitor.usage_command import AccountUsageSource
 
 
 class UsageCollector:
     """Produz um :class:`UsageReport` por ciclo de atualizacao da janela.
 
-    >>> UsageCollector(source, reader, store, clock).collect(include_cli_detail=True)
+    >>> UsageCollector(source, reader, store, clock, local_time).collect(include_cli_detail=True)
     """
 
     def __init__(
@@ -35,11 +36,13 @@ class UsageCollector:
         session_reader: SessionReader,
         snapshot_store: SnapshotStore,
         clock: Callable[[], datetime],
+        local_time: LocalTime,
     ) -> None:
         self._account_source = account_source
         self._session_reader = session_reader
         self._snapshot_store = snapshot_store
         self._clock = clock
+        self._local_time = local_time
 
     def collect(self, include_cli_detail: bool) -> UsageReport:
         """Le a conta e, se pedido, o detalhamento do kiro-cli desta maquina."""
@@ -50,7 +53,9 @@ class UsageCollector:
         pace = cycle_pace_from(account, inicio, agora)
         if not include_cli_detail:
             return UsageReport(account, pace, None, None)
-        breakdown = build_cli_breakdown(self._session_reader.read_turns(), inicio)
+        breakdown = build_cli_breakdown(
+            self._session_reader.read_turns(), inicio, self._local_time
+        )
         return UsageReport(
             account=account,
             cycle_pace=pace,

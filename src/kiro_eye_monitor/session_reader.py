@@ -60,9 +60,10 @@ class CliSessionReader:
         if not session:
             return []
         session_id = _as_str(session.get("session_id")) or path.stem
+        title = _as_str(session.get("title")).strip()
         project_path = _as_str(session.get("cwd")) or "(desconhecido)"
         built = (
-            _build_turn(session_id, project_path, _as_dict(raw))
+            _build_turn(session_id, title, project_path, _as_dict(raw))
             for raw in _turn_metadatas(session)
         )
         return [turn for turn in built if turn is not None]
@@ -88,7 +89,12 @@ def _turn_metadatas(session: dict[str, object]) -> list[object]:
     return _as_list(metadata.get("user_turn_metadatas"))
 
 
-def _build_turn(session_id: str, project_path: str, raw: dict[str, object]) -> TurnRecord | None:
+def _build_turn(
+    session_id: str,
+    session_title: str,
+    project_path: str,
+    raw: dict[str, object],
+) -> TurnRecord | None:
     """Monta um turno; devolve ``None`` se nao houver credito ou horario."""
     credits = _sum_credits(_as_list(raw.get("metering_usage")))
     ended_at = _parse_timestamp(_as_str(raw.get("end_timestamp")))
@@ -96,6 +102,7 @@ def _build_turn(session_id: str, project_path: str, raw: dict[str, object]) -> T
         return None
     return TurnRecord(
         session_id=session_id,
+        session_title=session_title,
         project_path=project_path,
         model=_as_str(raw.get("model")) or None,
         credits=credits,

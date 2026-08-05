@@ -20,11 +20,13 @@ def _escrever_sessao(
     session_id: str,
     cwd: str,
     turnos: list[dict[str, object]],
+    title: str = "arrumar o build",
 ) -> None:
     """Grava um arquivo de sessao no formato do kiro-cli."""
     payload = {
         "session_id": session_id,
         "cwd": cwd,
+        "title": title,
         "session_state": {"conversation_metadata": {"user_turn_metadatas": turnos}},
     }
     (sessions_dir / f"{session_id}.json").write_text(json.dumps(payload), encoding="utf-8")
@@ -55,6 +57,7 @@ def test_le_turno_com_projeto_modelo_e_credito(tmp_path: Path) -> None:
     assert turnos == (
         TurnRecord(
             session_id="s1",
+            session_title="arrumar o build",
             project_path="/home/dev/nav",
             model="claude-opus-5",
             credits=pytest.approx(0.277186468358209),
@@ -63,6 +66,21 @@ def test_le_turno_com_projeto_modelo_e_credito(tmp_path: Path) -> None:
             end_reason="Success",
         ),
     )
+
+
+def test_titulo_da_sessao_acompanha_cada_turno(tmp_path: Path) -> None:
+    """O title do arquivo e o unico rotulo legivel da conversa; o id e um UUID."""
+    _escrever_sessao(
+        tmp_path, "s1", "/home/dev/nav", [_turno([0.5]), _turno([0.25])], title="revisar o parser"
+    )
+
+    assert {t.session_title for t in CliSessionReader(tmp_path).read_turns()} == {"revisar o parser"}
+
+
+def test_titulo_ausente_vira_string_vazia(tmp_path: Path) -> None:
+    _escrever_sessao(tmp_path, "s1", "/home/dev/nav", [_turno([0.5])], title="   ")
+
+    assert CliSessionReader(tmp_path).read_turns()[0].session_title == ""
 
 
 def test_soma_as_entradas_de_metering_do_mesmo_turno(tmp_path: Path) -> None:

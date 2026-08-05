@@ -59,6 +59,10 @@ def _build_collector(options: argparse.Namespace) -> UsageCollector:
         session_reader=CliSessionReader(options.sessions_dir),
         snapshot_store=SnapshotStore(options.db),
         clock=lambda: datetime.now(timezone.utc),
+        # astimezone() sem argumento resolve o fuso do sistema no instante do
+        # turno, o que mantem o dia certo mesmo com horario de verao no meio do
+        # ciclo.
+        local_time=lambda momento: momento.astimezone(),
     )
 
 

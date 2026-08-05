@@ -86,4 +86,7 @@ uv run --group dev pytest -q
 ```
 
 Os testes do lado Windows usam Pester e precisam ser copiados para disco local
-antes, porque o Pester 3 não roda a partir de caminho UNC. Veja o README.
+antes, porque o Pester 3 não roda a partir de caminho UNC. O runner
+`windows/tools/Invoke-LocalPester.ps1` resume o resultado em uma linha, com uma
+linha por falha, que é o formato legível quando a chamada parte do WSL. Veja o
+README.

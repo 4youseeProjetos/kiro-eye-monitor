@@ -44,6 +44,7 @@ class TurnRecord:
     """
 
     session_id: str
+    session_title: str
     project_path: str
     model: str | None
     credits: float
@@ -62,6 +63,38 @@ class CreditGroup:
 
 
 @dataclass(frozen=True, slots=True)
+class DailyCredits:
+    """Consumo de um dia do calendario local.
+
+    ``chat_count`` acompanha o total porque um dia caro com uma conversa so tem
+    causa diferente de um dia caro espalhado por dez.
+    """
+
+    day: date
+    credits: float
+    turn_count: int
+    chat_count: int
+
+
+@dataclass(frozen=True, slots=True)
+class ChatCredits:
+    """Consumo de uma conversa do kiro-cli (um arquivo de sessao).
+
+    O ``title`` e o primeiro prompt da conversa, que e o que o kiro-cli grava no
+    campo ``title`` do arquivo de sessao; e o unico rotulo legivel disponivel,
+    ja que o ``session_id`` e um UUID.
+    """
+
+    session_id: str
+    title: str
+    project_path: str
+    credits: float
+    turn_count: int
+    first_turn_at: datetime
+    last_turn_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
 class CliBreakdown:
     """Detalhamento do consumo rastreavel do kiro-cli nesta maquina."""
 
@@ -70,6 +103,8 @@ class CliBreakdown:
     turn_count: int
     by_project: tuple[CreditGroup, ...]
     by_model: tuple[CreditGroup, ...]
+    by_day: tuple[DailyCredits, ...]
+    by_chat: tuple[ChatCredits, ...]
 
 
 @dataclass(frozen=True, slots=True)

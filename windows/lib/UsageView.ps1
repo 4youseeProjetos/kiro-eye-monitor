@@ -11,6 +11,9 @@ $script:RecursoPorNivel = @{
     'ok'      = 'CorOk'
 }
 $script:NivelFalha = 'falha'
+# Ausencia de detalhamento hoje e leitura incompleta, e nao escolha do usuario:
+# toda coleta da janela pede o detalhe.
+$script:SemDetalhamento = 'Sem detalhamento do kiro-cli nesta leitura.'
 
 function New-UsageWindow {
     <#
@@ -172,14 +175,19 @@ function Get-LargestIconFrame {
 }
 
 function Show-DetailSection {
-    <# Preenche o detalhamento do kiro-cli, quando presente no relatorio. #>
+    <#
+        Preenche o detalhamento por projeto do kiro-cli.
+
+        Ausencia de detalhamento hoje significa leitura incompleta, e nao escolha
+        do usuario: toda coleta da janela pede o detalhe.
+    #>
     param(
         [Parameter(Mandatory)][hashtable]$Ui,
         [Parameter(Mandatory)][pscustomobject]$Report,
         [Parameter(Mandatory)][int]$TopProjects
     )
-    if ($null -eq $Report.cli_breakdown) {
-        $Ui.CliTotalText.Text = 'Marque a caixa para carregar o detalhamento.'
+    if (-not (Test-KiroReportHasDetail -Report $Report)) {
+        $Ui.CliTotalText.Text = $script:SemDetalhamento
         $Ui.ProjectList.ItemsSource = @()
         $Ui.UnattributedText.Text = ''
         return
@@ -190,6 +198,100 @@ function Show-DetailSection {
     "$($detalhe.turn_count) turnos desde $($detalhe.period_start)"
     $Ui.ProjectList.ItemsSource = ConvertTo-ProjectRow -Groups $detalhe.by_project -Top $TopProjects
     $Ui.UnattributedText.Text = Format-KiroUnattributed -Credits $Report.unattributed_credits
+}
+
+$script:LarguraDaBarraDeDia = 190
+
+function ConvertTo-DayRow {
+    <#
+        Linhas da serie por dia, com a barra proporcional ao dia de maior consumo.
+
+        Devolve uma List para nao ser desempacotada pelo PowerShell quando ha um
+        dia so: ItemsSource exige colecao.
+    #>
+    param(
+        [Parameter(Mandatory)][AllowNull()][AllowEmptyCollection()][object[]]$Days,
+        [Parameter(Mandatory)][int]$Top,
+        [double]$BarWidth = $script:LarguraDaBarraDeDia
+    )
+    $linhas = New-Object 'System.Collections.Generic.List[object]'
+    $dias = @()
+    if ($null -ne $Days) { $dias = @($Days) }
+    if ($dias.Count -eq 0) { return , $linhas }
+    $pico = [double](@($dias | Sort-Object -Property credits -Descending)[0].credits)
+    foreach ($dia in ($dias | Select-Object -First $Top)) {
+        $linhas.Add([pscustomobject]@{
+                Dia      = Format-KiroDayLabel -IsoDate ([string]$dia.day)
+                Largura  = Get-KiroBarWidth -Value ([double]$dia.credits) -Max $pico -MaxWidth $BarWidth
+                Creditos = Format-KiroCredits -Value ([double]$dia.credits)
+                Dica     = "$($dia.turn_count) turnos em $($dia.chat_count) conversas"
+            })
+    }
+    return , $linhas
+}
+
+function ConvertTo-ChatRow {
+    <#
+        Linhas da serie por conversa, recortadas ao topo configurado.
+
+        A dica guarda o titulo inteiro e o caminho do projeto, que nao cabem na
+        largura da janela.
+    #>
+    param(
+        [Parameter(Mandatory)][AllowNull()][AllowEmptyCollection()][object[]]$Chats,
+        [Parameter(Mandatory)][int]$Top
+    )
+    $linhas = New-Object 'System.Collections.Generic.List[object]'
+    if ($null -eq $Chats) { return , $linhas }
+    foreach ($chat in (@($Chats) | Select-Object -First $Top)) {
+        $linhas.Add([pscustomobject]@{
+                Titulo   = Format-KiroChatTitle -Title ([string]$chat.title)
+                Creditos = Format-KiroCredits -Value ([double]$chat.credits)
+                Detalhe  = Format-KiroChatDetail -Chat $chat
+                Dica     = "$($chat.title)`n$($chat.project_path)"
+            })
+    }
+    return , $linhas
+}
+
+function Show-AnalysisSection {
+    <#
+        .SYNOPSIS
+        Preenche a aba de analise: consumo por dia e por conversa.
+        .DESCRIPTION
+        Sem detalhamento no relatorio as listas ficam vazias e o texto diz o que
+        fazer, em vez de deixar os tracinhos do XAML na tela.
+        .EXAMPLE
+        Show-AnalysisSection -Ui $ui -Report $relatorio -TopDays 14 -TopChats 10
+    #>
+    param(
+        [Parameter(Mandatory)][hashtable]$Ui,
+        [Parameter(Mandatory)][pscustomobject]$Report,
+        [Parameter(Mandatory)][int]$TopDays,
+        [Parameter(Mandatory)][int]$TopChats
+    )
+    if (-not (Test-KiroReportHasDetail -Report $Report)) {
+        Clear-AnalysisSection -Ui $Ui -Message $script:SemDetalhamento
+        return
+    }
+    $dias = Get-KiroReportList -Source $Report.cli_breakdown -Name 'by_day'
+    $chats = Get-KiroReportList -Source $Report.cli_breakdown -Name 'by_chat'
+    $Ui.DaySummaryText.Text = Format-KiroDaySummary -Days $dias -Top $TopDays
+    $Ui.DayList.ItemsSource = ConvertTo-DayRow -Days $dias -Top $TopDays
+    $Ui.ChatSummaryText.Text = Format-KiroChatSummary -Chats $chats
+    $Ui.ChatList.ItemsSource = ConvertTo-ChatRow -Chats $chats -Top $TopChats
+}
+
+function Clear-AnalysisSection {
+    <# Esvazia a aba de analise com um recado no lugar dos numeros. #>
+    param(
+        [Parameter(Mandatory)][hashtable]$Ui,
+        [Parameter(Mandatory)][string]$Message
+    )
+    $Ui.DaySummaryText.Text = $Message
+    $Ui.ChatSummaryText.Text = $Message
+    $Ui.DayList.ItemsSource = @()
+    $Ui.ChatList.ItemsSource = @()
 }
 
 function Show-FailurePanel {
@@ -212,6 +314,7 @@ function Show-FailurePanel {
     $Ui.PercentText.Text = ''
     $Ui.BurnText.Text = ''
     $Ui.ProjectionText.Text = ''
+    Clear-AnalysisSection -Ui $Ui -Message 'sem dados'
 }
 
 function Show-UsageReport {
@@ -227,6 +330,10 @@ function Show-UsageReport {
         [Parameter(Mandatory)][int]$WarnPercent,
         [Parameter(Mandatory)][int]$CriticalPercent,
         [Parameter(Mandatory)][int]$TopProjects,
+        # Cinco dias e o que responde "como esta esta semana" sem virar tabela;
+        # a media e o pico do resumo continuam cobrindo o ciclo inteiro.
+        [ValidateRange(1, 62)][int]$TopDays = 5,
+        [ValidateRange(1, 100)][int]$TopChats = 10,
         [AllowEmptyString()][string]$LogPath = ''
     )
     if (Test-KiroCollectorFailure -Report $Report) {
@@ -238,6 +345,7 @@ function Show-UsageReport {
     $nivel = Show-AccountSection -Ui $Ui -Report $Report `
         -WarnPercent $WarnPercent -CriticalPercent $CriticalPercent
     Show-DetailSection -Ui $Ui -Report $Report -TopProjects $TopProjects
+    Show-AnalysisSection -Ui $Ui -Report $Report -TopDays $TopDays -TopChats $TopChats
     $Ui.StatusText.Text = 'Atualizado ' + (Format-KiroLocalTime -IsoTimestamp $Report.account.captured_at)
     return $nivel
 }

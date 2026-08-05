@@ -149,3 +149,134 @@ function Format-KiroUnattributed {
     $valor = Format-KiroCredits -Value ([double]$Credits)
     return "Nao atribuido: $valor  (Kiro IDE, web ou outra maquina)"
 }
+
+$script:TituloAusente = '(sem titulo)'
+$script:LimiteTitulo = 52
+
+function Format-KiroDayLabel {
+    <#
+        .SYNOPSIS
+        Dia da serie por dia, com o dia da semana que ajuda a reconhecer o pico.
+        .DESCRIPTION
+        O coletor manda o dia local ja resolvido, entao aqui nao ha conversao de
+        fuso: so formatacao. Data ilegivel volta como veio, para a janela nao
+        esconder um contrato que mudou.
+        .EXAMPLE
+        Format-KiroDayLabel -IsoDate '2026-08-04'   # 'ter 04/08'
+    #>
+    param([Parameter(Mandatory)][AllowEmptyString()][string]$IsoDate)
+
+    [datetime]$data = [datetime]::MinValue
+    $lido = [datetime]::TryParseExact(
+        $IsoDate, 'yyyy-MM-dd', [cultureinfo]::InvariantCulture,
+        [System.Globalization.DateTimeStyles]::None, [ref]$data)
+    if (-not $lido) { return $IsoDate }
+    return $data.ToString('ddd dd/MM')
+}
+
+function Format-KiroChatTitle {
+    <#
+        .SYNOPSIS
+        Titulo da conversa em uma linha, cortado no limite da coluna.
+        .DESCRIPTION
+        O titulo e o primeiro prompt da conversa, que pode ter varias linhas.
+        .EXAMPLE
+        Format-KiroChatTitle -Title "arrumar`n o build" -MaxLength 20
+    #>
+    param(
+        [AllowNull()][AllowEmptyString()][string]$Title,
+        [ValidateRange(8, 200)][int]$MaxLength = 52
+    )
+    $limpo = ($Title -replace '\s+', ' ').Trim()
+    if ([string]::IsNullOrEmpty($limpo)) { return $script:TituloAusente }
+    if ($limpo.Length -le $MaxLength) { return $limpo }
+    return $limpo.Substring(0, $MaxLength - 3) + '...'
+}
+
+function Get-KiroBarWidth {
+    <#
+        .SYNOPSIS
+        Largura em pixels da barra de um dia, proporcional ao maior dia.
+        .DESCRIPTION
+        Dia com consumo minimo recebe 2 pixels em vez de zero: barra invisivel
+        se confunde com dia sem consumo.
+        .EXAMPLE
+        Get-KiroBarWidth -Value 30 -Max 120 -MaxWidth 200   # 50
+    #>
+    param(
+        [Parameter(Mandatory)][double]$Value,
+        [Parameter(Mandatory)][double]$Max,
+        [Parameter(Mandatory)][double]$MaxWidth
+    )
+    if ($Value -le 0 -or $Max -le 0) { return 0.0 }
+    return [math]::Max(2.0, [math]::Round($MaxWidth * $Value / $Max, 1))
+}
+
+function Format-KiroDaySummary {
+    <#
+        .SYNOPSIS
+        Resume a serie por dia: quantos dias, media e o pico do ciclo.
+
+        .DESCRIPTION
+        As contas cobrem o ciclo inteiro mesmo quando a lista mostra so os dias
+        mais recentes: a media do mes nao pode mudar por causa do recorte da tela.
+        Havendo corte, o texto diz quantos dias a lista traz.
+
+        .EXAMPLE
+        Format-KiroDaySummary -Days $Report.cli_breakdown.by_day -Top 5
+    #>
+    param(
+        [AllowNull()][AllowEmptyCollection()][object[]]$Days,
+        [Parameter(Mandatory)][ValidateRange(1, 62)][int]$Top
+    )
+    $dias = @()
+    if ($null -ne $Days) { $dias = @($Days) }
+    if ($dias.Count -eq 0) { return 'Nenhum turno do kiro-cli neste ciclo.' }
+    $total = ($dias | Measure-Object -Property credits -Sum).Sum
+    $pico = @($dias | Sort-Object -Property credits -Descending)[0]
+    $media = Format-KiroCredits -Value ([double]$total / $dias.Count)
+    $maior = Format-KiroCredits -Value ([double]$pico.credits)
+    $quando = Format-KiroDayLabel -IsoDate ([string]$pico.day)
+    $cabeca = "$($dias.Count) dias com consumo"
+    if ($dias.Count -gt $Top) { $cabeca += " (lista: os $Top mais recentes)" }
+    return "$cabeca  |  media $media/dia  |  pico $maior em $quando"
+}
+
+function Format-KiroChatSummary {
+    <#
+        .SYNOPSIS
+        Resume a serie por conversa: quantas houve e o peso da maior.
+        .DESCRIPTION
+        A fatia da maior conversa e o numero que responde "foi um chat que
+        pesou ou o mes inteiro".
+        .EXAMPLE
+        Format-KiroChatSummary -Chats $Report.cli_breakdown.by_chat
+    #>
+    param([AllowNull()][AllowEmptyCollection()][object[]]$Chats)
+
+    # Nome diferente do parametro de proposito: variavel em PowerShell nao
+    # distingue maiuscula, e $chats sobrescreveria $Chats.
+    $conversas = @()
+    if ($null -ne $Chats) { $conversas = @($Chats) }
+    if ($conversas.Count -eq 0) { return 'Nenhuma conversa com credito neste ciclo.' }
+    $total = [double]($conversas | Measure-Object -Property credits -Sum).Sum
+    $maior = @($conversas | Sort-Object -Property credits -Descending)[0]
+    if ($total -le 0) { return "$($conversas.Count) conversas neste ciclo" }
+    $fatia = [int][math]::Round(100 * [double]$maior.credits / $total)
+    return "$($conversas.Count) conversas  |  a maior concentra $fatia% do consumo do kiro-cli"
+}
+
+function Format-KiroChatDetail {
+    <#
+        .SYNOPSIS
+        Segunda linha de uma conversa: projeto, turnos e ultimo uso.
+        .EXAMPLE
+        Format-KiroChatDetail -Chat $Report.cli_breakdown.by_chat[0]
+    #>
+    param([Parameter(Mandatory)][pscustomobject]$Chat)
+
+    $projeto = Split-Path -Leaf ([string]$Chat.project_path)
+    $ultimo = Format-KiroLocalTime -IsoTimestamp ([string]$Chat.last_turn_at)
+    return "$projeto  |  $($Chat.turn_count) turnos  |  ultimo em $ultimo"
+}
+

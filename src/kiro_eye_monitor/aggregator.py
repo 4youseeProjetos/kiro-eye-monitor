@@ -14,14 +14,19 @@ from datetime import date
 
 from kiro_eye_monitor.billing_period import start_of_day_utc
 from kiro_eye_monitor.models import CliBreakdown, CreditGroup, TurnRecord
+from kiro_eye_monitor.timeline import LocalTime, credits_by_chat, credits_by_day
 
 MODELO_NAO_INFORMADO = "(nao informado)"
 
 
-def build_cli_breakdown(turns: Sequence[TurnRecord], period_start: date) -> CliBreakdown:
-    """Soma os turnos do ciclo corrente e agrupa por projeto e por modelo.
+def build_cli_breakdown(
+    turns: Sequence[TurnRecord],
+    period_start: date,
+    local_time: LocalTime,
+) -> CliBreakdown:
+    """Soma os turnos do ciclo corrente e agrupa por projeto, modelo, dia e conversa.
 
-    >>> build_cli_breakdown(turns, date(2026, 7, 1)).by_project[0].label
+    >>> build_cli_breakdown(turns, date(2026, 7, 1), lambda t: t.astimezone()).by_project[0].label
     '/home/dev/loja-online'
     """
     limite = start_of_day_utc(period_start)
@@ -32,6 +37,8 @@ def build_cli_breakdown(turns: Sequence[TurnRecord], period_start: date) -> CliB
         turn_count=len(do_ciclo),
         by_project=_group(do_ciclo, lambda turn: turn.project_path),
         by_model=_group(do_ciclo, lambda turn: turn.model or MODELO_NAO_INFORMADO),
+        by_day=credits_by_day(do_ciclo, local_time),
+        by_chat=credits_by_chat(do_ciclo),
     )
 
 

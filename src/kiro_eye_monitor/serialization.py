@@ -6,7 +6,15 @@ essa e a granularidade do medidor do Kiro (incrementos de 0.01).
 
 from __future__ import annotations
 
-from kiro_eye_monitor.models import AccountUsage, CliBreakdown, CreditGroup, CyclePace, UsageReport
+from kiro_eye_monitor.models import (
+    AccountUsage,
+    ChatCredits,
+    CliBreakdown,
+    CreditGroup,
+    CyclePace,
+    DailyCredits,
+    UsageReport,
+)
 
 _CREDIT_DECIMALS = 2
 
@@ -42,6 +50,31 @@ def _breakdown_to_dict(breakdown: CliBreakdown) -> dict[str, object]:
         "turn_count": breakdown.turn_count,
         "by_project": [_group_to_dict(group) for group in breakdown.by_project],
         "by_model": [_group_to_dict(group) for group in breakdown.by_model],
+        "by_day": [_day_to_dict(day) for day in breakdown.by_day],
+        "by_chat": [_chat_to_dict(chat) for chat in breakdown.by_chat],
+    }
+
+
+def _day_to_dict(day: DailyCredits) -> dict[str, object]:
+    """Dia local, ja no formato que a aba de analise exibe."""
+    return {
+        "day": day.day.isoformat(),
+        "credits": _round(day.credits),
+        "turn_count": day.turn_count,
+        "chat_count": day.chat_count,
+    }
+
+
+def _chat_to_dict(chat: ChatCredits) -> dict[str, object]:
+    """Conversa com os horarios em UTC; a janela converte para a hora local."""
+    return {
+        "session_id": chat.session_id,
+        "title": chat.title,
+        "project_path": chat.project_path,
+        "credits": _round(chat.credits),
+        "turn_count": chat.turn_count,
+        "first_turn_at": chat.first_turn_at.isoformat(),
+        "last_turn_at": chat.last_turn_at.isoformat(),
     }
 
 

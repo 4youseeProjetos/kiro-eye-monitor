@@ -90,11 +90,29 @@ ciclo, com a projeção de quanto você chega ao reset. Medir sobre o mês, e n�
 entre duas leituras, evita que uma rajada de poucos minutos vire uma projeção
 absurda.
 
-**A caixa "Detalhar consumo do kiro-cli"**, quando marcada, abre o consumo por
-projeto. Isso vem dos arquivos que o kiro-cli já grava em
-`~/.kiro/sessions/cli/*.json`, onde cada turno de conversa registra o crédito que
-consumiu em `metering_usage[].value`. É leitura de disco: custo zero. Com a caixa
-desmarcada o coletor nem varre esses arquivos.
+**O consumo por projeto** aparece direto no resumo, sem nada para marcar. Vem
+dos arquivos que o kiro-cli já grava em `~/.kiro/sessions/cli/*.json`, onde cada
+turno de conversa registra o crédito que consumiu em `metering_usage[].value`.
+Antes isso ficava atrás de uma caixa "Detalhar consumo do kiro-cli", para evitar
+a varredura dos arquivos; medido, esse cuidado não se justificava: ler as 240
+sessões desta máquina (10 MB) custa 36 ms contra 1,8 s do `kiro-cli /usage` na
+mesma coleta.
+
+**A aba "Análise"** responde *quando* e *em qual conversa* o crédito foi gasto,
+que é o que permite ligar um pico a um dia de trabalho. Ela tem duas séries do
+ciclo corrente:
+
+- **Créditos por dia**, os cinco dias mais recentes com consumo, cada um com
+  barra proporcional ao dia de maior consumo do ciclo. A média e o pico do
+  resumo cobrem o ciclo inteiro, não só os dias listados, e o texto avisa quando
+  a lista está cortada. O dia é o dia local de quem lê, e não o UTC: turno das
+  22h não é empurrado para o dia seguinte. Para ver mais dias:
+  `-TopDays 15` no atalho.
+- **Créditos por chat**, da conversa mais cara para a mais barata, com projeto,
+  contagem de turnos e último uso. O rótulo é o título que o kiro-cli grava no
+  arquivo de sessão, que é o primeiro prompt da conversa — o `session_id` é um
+  UUID e não diz nada. Esse texto aparece só na janela: o log de falhas e o
+  `diagnostico.sh` continuam sem conteúdo de conversa.
 
 **A linha "Não atribuído"** é a diferença entre o total da conta e o que os
 arquivos de sessão explicam. Ela existe porque o Kiro IDE mostra "Est. Credits
@@ -105,7 +123,8 @@ esse resto a esconder um terço do consumo.
 
 Tokens não servem de unidade aqui: o serviço devolve `input_token_count` e
 `output_token_count` zerados nos arquivos de sessão. A cobrança é em crédito
-fracionado, medido em incrementos de 0,01.
+fracionado, medido em incrementos de 0,01 — e é por isso que a aba de análise
+mede crédito, não token.
 
 ## Como funciona
 
@@ -206,6 +225,13 @@ Copy-Item -Recurse .\windows "$env:TEMP\kiro-win"
 Invoke-Pester -Path "$env:TEMP\kiro-win\tests"
 ```
 
+Para um resumo de uma linha, com uma linha por falha — útil ao chamar do WSL, onde
+a saída colorida do Pester não aparece:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "$env:TEMP\kiro-win\tools\Invoke-LocalPester.ps1"
+```
+
 Regerar o ícone:
 
 ```bash
@@ -227,7 +253,8 @@ AGENTS.md                 roteiro de instalação para agentes
 scripts/collect.sh        ponte chamada pelo Windows via wsl.exe
 scripts/diagnostico.sh    retrato do ambiente para diagnosticar falha remota
 src/kiro_eye_monitor/     coletor: parser do /usage, leitor de sessões,
-                          agregador, ritmo do ciclo, gerador do ícone
+                          agregador, séries por dia e por chat, ritmo do ciclo,
+                          gerador do ícone
 windows/                  janela WPF, libs PowerShell e gerador de atalhos
 tests/ e windows/tests/   pytest e Pester
 ```

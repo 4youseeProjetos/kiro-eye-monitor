@@ -14,11 +14,24 @@ from kiro_eye_monitor.snapshot_store import SnapshotStore
 
 USAGE = "Estimated Usage | resets on 2026-08-01 | KIRO POWER (2000.00 of 10000 covered in plan) 20%"
 AGORA = datetime(2026, 7, 30, 12, tzinfo=timezone.utc)
+SAO_PAULO = timezone(timedelta(hours=-3))
 
 
-def _turno(projeto: str, creditos: float, quando: datetime) -> TurnRecord:
+def _em_sao_paulo(momento: datetime) -> datetime:
+    """Fuso fixo no teste para o dia local nao depender da maquina."""
+    return momento.astimezone(SAO_PAULO)
+
+
+def _turno(
+    projeto: str,
+    creditos: float,
+    quando: datetime,
+    sessao: str = "s1",
+    titulo: str = "arrumar o build",
+) -> TurnRecord:
     return TurnRecord(
-        session_id="s1",
+        session_id=sessao,
+        session_title=titulo,
         project_path=projeto,
         model="claude-opus-5",
         credits=creditos,
@@ -39,6 +52,7 @@ def _coletor(
         session_reader=leitor,
         snapshot_store=SnapshotStore(tmp_path / "snapshots.db"),
         clock=FrozenClock(*(momentos or (AGORA,))),
+        local_time=_em_sao_paulo,
     )
     return coletor, leitor
 
@@ -79,6 +93,39 @@ def test_detalhamento_agrupa_por_projeto_no_ciclo_corrente(tmp_path: Path) -> No
     assert [g.label for g in detalhe.by_project] == ["/nav", "/manager"]
 
 
+def test_detalhamento_traz_a_serie_por_dia_local(tmp_path: Path) -> None:
+    """22h em Sao Paulo e madrugada do dia seguinte em UTC; vale o dia do dev."""
+    turnos = (
+        _turno("/nav", 10.0, datetime(2026, 7, 21, 1, 30, tzinfo=timezone.utc)),
+        _turno("/nav", 4.0, datetime(2026, 7, 21, 15, 0, tzinfo=timezone.utc)),
+    )
+    coletor, _ = _coletor(tmp_path, turnos)
+
+    detalhe = coletor.collect(include_cli_detail=True).cli_breakdown
+
+    assert detalhe is not None
+    assert [(d.day, d.credits) for d in detalhe.by_day] == [
+        (date(2026, 7, 21), pytest.approx(4.0)),
+        (date(2026, 7, 20), pytest.approx(10.0)),
+    ]
+
+
+def test_detalhamento_traz_a_serie_por_chat(tmp_path: Path) -> None:
+    turnos = (
+        _turno("/nav", 10.0, datetime(2026, 7, 10, tzinfo=timezone.utc), sessao="a", titulo="parser"),
+        _turno("/nav", 30.0, datetime(2026, 7, 11, tzinfo=timezone.utc), sessao="b", titulo="aba"),
+    )
+    coletor, _ = _coletor(tmp_path, turnos)
+
+    detalhe = coletor.collect(include_cli_detail=True).cli_breakdown
+
+    assert detalhe is not None
+    assert [(c.title, c.credits) for c in detalhe.by_chat] == [
+        ("aba", pytest.approx(30.0)),
+        ("parser", pytest.approx(10.0)),
+    ]
+
+
 def test_nao_atribuido_e_o_que_a_fonte_b_nao_explica(tmp_path: Path) -> None:
     turnos = (_turno("/nav", 1500.0, datetime(2026, 7, 10, tzinfo=timezone.utc)),)
     coletor, _ = _coletor(tmp_path, turnos)
@@ -113,6 +160,7 @@ def test_cada_coleta_persiste_um_snapshot(tmp_path: Path) -> None:
         session_reader=FakeSessionReader(),
         snapshot_store=store,
         clock=FrozenClock(AGORA, AGORA + timedelta(hours=1)),
+        local_time=_em_sao_paulo,
     )
 
     coletor.collect(include_cli_detail=False)

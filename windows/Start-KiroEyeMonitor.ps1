@@ -4,9 +4,9 @@
 
     .DESCRIPTION
     Mostra o total da conta (que ja soma Kiro IDE, kiro-cli, web e mobile, pois
-    o pool de credito e unico) e, sob a caixa de selecao, o detalhamento por
-    projeto do kiro-cli desta maquina. Toda a leitura acontece no WSL; aqui so
-    se desenha o JSON recebido.
+    o pool de credito e unico) com o detalhamento por projeto do kiro-cli desta
+    maquina, e uma aba de analise com o consumo por dia e por conversa. Toda a
+    leitura acontece no WSL; aqui so se desenha o JSON recebido.
 
     .EXAMPLE
     powershell -ExecutionPolicy Bypass -File .\Start-KiroEyeMonitor.ps1
@@ -24,7 +24,12 @@ param(
     [ValidateRange(1, 120)][int]$RefreshMinutes = 5,
     [ValidateRange(1, 100)][int]$WarnPercent = 75,
     [ValidateRange(1, 100)][int]$CriticalPercent = 90,
-    [ValidateRange(1, 50)][int]$TopProjects = 8
+    [ValidateRange(1, 50)][int]$TopProjects = 8,
+    # A aba de analise lista os dias mais recentes com consumo e as conversas
+    # mais caras do ciclo. Cinco dias cobrem a semana de trabalho; a media e o
+    # pico exibidos continuam sendo do ciclo inteiro.
+    [ValidateRange(1, 62)][int]$TopDays = 5,
+    [ValidateRange(1, 100)][int]$TopChats = 10
 )
 
 Set-StrictMode -Version Latest
@@ -47,25 +52,29 @@ $script:PollIntervalMs = 250
 $script:ControlNames = @(
     'ErrorPanel', 'ErrorText', 'ErrorHintText',
     'PlanText', 'HeadlineText', 'UsageBar', 'PercentText', 'BurnText', 'ProjectionText',
-    'DetailToggle', 'DetailPanel', 'CliTotalText', 'ProjectList', 'UnattributedText',
+    'CliTotalText', 'ProjectList', 'UnattributedText',
+    'MainTabs', 'SummaryTab', 'AnalysisTab',
+    'DaySummaryText', 'DayList', 'ChatSummaryText', 'ChatList',
     'StatusText', 'RefreshButton'
 )
 
 # Roda em runspace proprio: recebe so primitivos e devolve o texto cru.
+#
+# Sempre com detalhamento: varrer as sessoes custa ~36 ms contra ~1,8 s do
+# kiro-cli /usage na mesma coleta, e as duas abas dependem dele. O
+# --account-only continua existindo na ponte, para depuracao pela linha de
+# comando.
 $script:TrabalhoDeColeta = {
-    param([string]$Distro, [string]$BridgePath, [bool]$AccountOnly)
-    $wslArgs = @('-d', $Distro, '--', $BridgePath)
-    if ($AccountOnly) { $wslArgs += '--account-only' }
-    & wsl.exe @wslArgs 2>&1
+    param([string]$Distro, [string]$BridgePath)
+    & wsl.exe @('-d', $Distro, '--', $BridgePath) 2>&1
 }
 
 function Start-Collection {
     <# Dispara uma coleta se nenhuma estiver em andamento. #>
     if ($null -ne $script:ColetaEmCurso) { return }
-    $somenteConta = -not $script:Ui.DetailToggle.IsChecked
     $script:Ui.StatusText.Text = 'Coletando...'
     $script:ColetaEmCurso = Start-BackgroundCall -Work $script:TrabalhoDeColeta `
-        -ArgumentList @($script:Distro, $script:BridgeResolvido, [bool]$somenteConta)
+        -ArgumentList @($script:Distro, $script:BridgeResolvido)
 }
 
 function Write-CollectionFailure {
@@ -92,7 +101,8 @@ function Complete-Collection {
     $null = Write-CollectionFailure -Report $relatorio -Raw ([string]$bruto)
     $nivel = Show-UsageReport -Ui $script:Ui -Report $relatorio `
         -WarnPercent $script:WarnPercent -CriticalPercent $script:CriticalPercent `
-        -TopProjects $script:TopProjects -LogPath $script:LogPath
+        -TopProjects $script:TopProjects -TopDays $script:TopDays -TopChats $script:TopChats `
+        -LogPath $script:LogPath
     Send-ThresholdAlert -Level $nivel -Report $relatorio
 }
 
@@ -139,14 +149,12 @@ function New-TrayIcon {
 }
 
 function Register-WindowEvent {
-    <# Liga botao, caixa de selecao, posicionamento e limpeza da bandeja. #>
+    <# Liga botao, posicionamento da janela e limpeza da bandeja. #>
     $script:MainWindow.add_Loaded({ Set-WindowInsideWorkArea -Window $script:MainWindow })
+    # Trocar de aba muda a altura (SizeToContent="Height"); sem reancorar, a aba
+    # de analise cresce para fora da area util.
+    $script:MainWindow.add_SizeChanged({ Set-WindowInsideWorkArea -Window $script:MainWindow })
     $script:Ui.RefreshButton.add_Click({ Start-Collection })
-    $script:Ui.DetailToggle.add_Checked({
-            $script:Ui.DetailPanel.Visibility = 'Visible'
-            Start-Collection
-        })
-    $script:Ui.DetailToggle.add_Unchecked({ $script:Ui.DetailPanel.Visibility = 'Collapsed' })
     $script:MainWindow.add_Closed({
             $script:Tray.Visible = $false
             $script:Tray.Dispose()
@@ -195,10 +203,14 @@ function Resolve-DistroOrAlert {
 }
 
 $script:Distro = Resolve-DistroOrAlert -Requested $Distro
+# Antes de qualquer coleta: a saida do coletor e UTF-8 e traz titulo de conversa.
+$null = Set-KiroCollectorEncoding
 $script:RefreshMinutes = $RefreshMinutes
 $script:WarnPercent = $WarnPercent
 $script:CriticalPercent = $CriticalPercent
 $script:TopProjects = $TopProjects
+$script:TopDays = $TopDays
+$script:TopChats = $TopChats
 $script:ColetaEmCurso = $null
 $script:UltimoNivel = 'ok'
 $script:BridgeResolvido = Resolve-BridgePath -Informado $BridgePath -ScriptRoot $PSScriptRoot

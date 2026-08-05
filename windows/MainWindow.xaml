@@ -1,7 +1,7 @@
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="kiro-eye-monitor"
-        Width="430"
+        Width="470"
         SizeToContent="Height"
         ResizeMode="CanMinimize"
         Background="#FF1E1E1E"
@@ -15,6 +15,45 @@
         <SolidColorBrush x:Key="CorOk" Color="#FF0096FF" />
         <SolidColorBrush x:Key="CorAtencao" Color="#FFDCDCAA" />
         <SolidColorBrush x:Key="CorCritica" Color="#FFF48771" />
+
+        <!--
+            Aba com template proprio: o template padrao do Windows desenha a aba
+            em cinza claro, que destoa do resto da janela. Estilo implicito para
+            valer em todas as abas sem repetir referencia.
+        -->
+        <Style TargetType="TabItem">
+            <Setter Property="Foreground" Value="#FFCCCCCC" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TabItem">
+                        <Border x:Name="Aba"
+                                Background="#FF252526"
+                                BorderBrush="#FF333333"
+                                BorderThickness="1,1,1,0"
+                                Padding="14,6"
+                                Margin="0,0,3,0">
+                            <ContentPresenter ContentSource="Header"
+                                              HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Aba" Property="Background" Value="#FF1E1E1E" />
+                                <Setter Property="Foreground" Value="{StaticResource CorOk}" />
+                                <Setter Property="FontWeight" Value="SemiBold" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="TituloDeSecao" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="#FF9CDCFE" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+        </Style>
     </Window.Resources>
     <StackPanel Margin="18">
 
@@ -50,68 +89,164 @@
             </StackPanel>
         </Border>
 
-        <!-- Informacao principal: total da conta, que ja soma IDE + CLI + web -->
-        <TextBlock x:Name="PlanText" Foreground="#FF9CDCFE" FontSize="12" Text="Carregando..." />
-        <TextBlock x:Name="HeadlineText"
-                   Foreground="#FFFFFFFF"
-                   FontSize="26"
-                   FontWeight="SemiBold"
-                   Margin="0,4,0,8"
-                   Text="--" />
-        <ProgressBar x:Name="UsageBar"
-                     Height="14"
-                     Minimum="0"
-                     Maximum="100"
-                     Background="#FF2D2D2D"
-                     BorderBrush="#FF3F3F3F" />
-        <TextBlock x:Name="PercentText" Foreground="#FFCCCCCC" FontSize="12" Margin="0,6,0,0" Text="--" />
+        <TabControl x:Name="MainTabs"
+                    Background="#FF1E1E1E"
+                    BorderBrush="#FF333333"
+                    BorderThickness="1"
+                    Padding="14,12">
 
-        <Border Height="1" Background="#FF333333" Margin="0,14" />
+            <!--
+                IsSelected fixo: sem janela mostrada o TabControl ainda nao
+                escolheu aba, e os testes de renderizacao carregam o XAML sem
+                abrir janela.
+            -->
+            <TabItem x:Name="SummaryTab" Header="Resumo" IsSelected="True">
+                <StackPanel>
+                    <!-- Informacao principal: total da conta, que ja soma IDE + CLI + web -->
+                    <TextBlock x:Name="PlanText" Foreground="#FF9CDCFE" FontSize="12" Text="Carregando..." />
+                    <TextBlock x:Name="HeadlineText"
+                               Foreground="#FFFFFFFF"
+                               FontSize="26"
+                               FontWeight="SemiBold"
+                               Margin="0,4,0,8"
+                               Text="--" />
+                    <ProgressBar x:Name="UsageBar"
+                                 Height="14"
+                                 Minimum="0"
+                                 Maximum="100"
+                                 Background="#FF2D2D2D"
+                                 BorderBrush="#FF3F3F3F" />
+                    <TextBlock x:Name="PercentText" Foreground="#FFCCCCCC" FontSize="12" Margin="0,6,0,0" Text="--" />
 
-        <TextBlock x:Name="BurnText" Foreground="#FFDCDCAA" FontSize="12" TextWrapping="Wrap" Text="--" />
-        <TextBlock x:Name="ProjectionText"
-                   Foreground="#FFCCCCCC"
-                   FontSize="12"
-                   Margin="0,5,0,0"
-                   TextWrapping="Wrap"
-                   Text="--" />
+                    <Border Height="1" Background="#FF333333" Margin="0,14" />
 
-        <CheckBox x:Name="DetailToggle"
-                  Content="Detalhar consumo do kiro-cli"
-                  Foreground="#FFCCCCCC"
-                  Margin="0,14,0,0" />
+                    <TextBlock x:Name="BurnText" Foreground="#FFDCDCAA" FontSize="12" TextWrapping="Wrap" Text="--" />
+                    <TextBlock x:Name="ProjectionText"
+                               Foreground="#FFCCCCCC"
+                               FontSize="12"
+                               Margin="0,5,0,0"
+                               TextWrapping="Wrap"
+                               Text="--" />
 
-        <StackPanel x:Name="DetailPanel" Visibility="Collapsed" Margin="0,10,0,0">
-            <TextBlock x:Name="CliTotalText" Foreground="#FFFFFFFF" FontSize="12" TextWrapping="Wrap" Text="--" />
-            <ItemsControl x:Name="ProjectList" Margin="0,8,0,0">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <Grid Margin="0,2">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Text="{Binding Nome}"
-                                       Foreground="#FFCCCCCC"
-                                       FontSize="11"
-                                       TextTrimming="CharacterEllipsis"
-                                       ToolTip="{Binding Caminho}" />
-                            <TextBlock Grid.Column="1"
-                                       Text="{Binding Creditos}"
-                                       Foreground="{StaticResource CorOk}"
-                                       FontSize="11"
-                                       Margin="10,0,0,0" />
-                        </Grid>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <TextBlock x:Name="UnattributedText"
-                       Foreground="#FFC586C0"
-                       FontSize="11"
-                       Margin="0,10,0,0"
-                       TextWrapping="Wrap"
-                       Text="" />
-        </StackPanel>
+                    <Border Height="1" Background="#FF333333" Margin="0,14" />
+
+                    <!--
+                        Detalhamento sempre visivel: a caixa de selecao que ficava
+                        aqui existia para evitar a varredura das sessoes, que custa
+                        36 ms contra 1,8 s do kiro-cli /usage na mesma coleta.
+                    -->
+                    <TextBlock x:Name="CliTotalText" Foreground="#FFFFFFFF" FontSize="12" TextWrapping="Wrap" Text="--" />
+                    <ItemsControl x:Name="ProjectList" Margin="0,8,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,2">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="72" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding Nome}"
+                                               Foreground="#FFCCCCCC"
+                                               FontSize="11"
+                                               TextTrimming="CharacterEllipsis"
+                                               ToolTip="{Binding Caminho}" />
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding Creditos}"
+                                               Foreground="{StaticResource CorOk}"
+                                               FontSize="11"
+                                               TextAlignment="Right" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock x:Name="UnattributedText"
+                               Foreground="#FFC586C0"
+                               FontSize="11"
+                               Margin="0,10,0,0"
+                               TextWrapping="Wrap"
+                               Text="" />
+                </StackPanel>
+            </TabItem>
+
+            <!--
+                Aba de analise: responde "quando" e "em qual conversa" o credito
+                foi gasto. A unidade e credito, e nao token, porque os arquivos
+                de sessao trazem os contadores de token zerados.
+            -->
+            <TabItem x:Name="AnalysisTab" Header="Analise">
+                <StackPanel>
+                    <TextBlock Text="Creditos por dia" Style="{StaticResource TituloDeSecao}" />
+                    <TextBlock x:Name="DaySummaryText"
+                               Foreground="#FFCCCCCC"
+                               FontSize="11"
+                               Margin="0,4,0,0"
+                               TextWrapping="Wrap"
+                               Text="--" />
+                    <ItemsControl x:Name="DayList" Margin="0,8,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,2" ToolTip="{Binding Dica}">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="66" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="72" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{Binding Dia}" Foreground="#FFCCCCCC" FontSize="11" />
+                                    <Border Grid.Column="1"
+                                            Width="{Binding Largura}"
+                                            Height="9"
+                                            CornerRadius="1"
+                                            HorizontalAlignment="Left"
+                                            VerticalAlignment="Center"
+                                            Background="{StaticResource CorOk}" />
+                                    <TextBlock Grid.Column="2"
+                                               Text="{Binding Creditos}"
+                                               Foreground="#FFFFFFFF"
+                                               FontSize="11"
+                                               TextAlignment="Right" />
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <Border Height="1" Background="#FF333333" Margin="0,14" />
+
+                    <TextBlock Text="Creditos por chat" Style="{StaticResource TituloDeSecao}" />
+                    <TextBlock x:Name="ChatSummaryText"
+                               Foreground="#FFCCCCCC"
+                               FontSize="11"
+                               Margin="0,4,0,0"
+                               TextWrapping="Wrap"
+                               Text="--" />
+                    <ItemsControl x:Name="ChatList" Margin="0,8,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Margin="0,0,0,7" ToolTip="{Binding Dica}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="72" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="{Binding Titulo}"
+                                                   Foreground="#FFCCCCCC"
+                                                   FontSize="11"
+                                                   TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{Binding Creditos}"
+                                                   Foreground="{StaticResource CorOk}"
+                                                   FontSize="11"
+                                                   TextAlignment="Right" />
+                                    </Grid>
+                                    <TextBlock Text="{Binding Detalhe}"
+                                               Foreground="#FF808080"
+                                               FontSize="10"
+                                               TextTrimming="CharacterEllipsis" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </TabItem>
+        </TabControl>
 
         <Border Height="1" Background="#FF333333" Margin="0,14" />
 

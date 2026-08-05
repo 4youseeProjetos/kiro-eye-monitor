@@ -94,6 +94,144 @@ Describe 'Format-KiroUnattributed' {
     }
 }
 
+Describe 'Format-KiroDayLabel' {
+
+    It 'mostra dia da semana e data curta' {
+        Format-KiroDayLabel -IsoDate '2026-08-04' | Should Match '04/08$'
+    }
+
+    It 'nao converte fuso: o coletor ja manda o dia local' {
+        Format-KiroDayLabel -IsoDate '2026-08-04' | Should Not Match '03/08'
+    }
+
+    It 'data ilegivel volta como veio, em vez de virar tracinho' {
+        Format-KiroDayLabel -IsoDate 'ontem' | Should Be 'ontem'
+    }
+}
+
+Describe 'Format-KiroChatTitle' {
+
+    It 'mantem titulo curto intacto' {
+        Format-KiroChatTitle -Title 'arrumar o build' | Should Be 'arrumar o build'
+    }
+
+    It 'junta as linhas do primeiro prompt em uma so' {
+        Format-KiroChatTitle -Title "arrumar`n  o build" | Should Be 'arrumar o build'
+    }
+
+    It 'corta no limite da coluna' {
+        $texto = Format-KiroChatTitle -Title ('x' * 200) -MaxLength 20
+        $texto.Length | Should Be 20
+        $texto.EndsWith('...') | Should Be $true
+    }
+
+    It 'conversa sem titulo recebe rotulo proprio' {
+        Format-KiroChatTitle -Title '   ' | Should Be '(sem titulo)'
+    }
+}
+
+Describe 'Get-KiroBarWidth' {
+
+    It 'o maior dia ocupa a largura toda' {
+        Get-KiroBarWidth -Value 120 -Max 120 -MaxWidth 200 | Should Be 200
+    }
+
+    It 'dia intermediario fica proporcional' {
+        Get-KiroBarWidth -Value 30 -Max 120 -MaxWidth 200 | Should Be 50
+    }
+
+    It 'consumo minimo ainda aparece' {
+        Get-KiroBarWidth -Value 0.01 -Max 120 -MaxWidth 200 | Should Be 2
+    }
+
+    It 'sem consumo nao desenha barra' {
+        Get-KiroBarWidth -Value 0 -Max 120 -MaxWidth 200 | Should Be 0
+    }
+
+    It 'pico zerado nao divide por zero' {
+        Get-KiroBarWidth -Value 0 -Max 0 -MaxWidth 200 | Should Be 0
+    }
+}
+
+Describe 'Format-KiroDaySummary' {
+
+    $dias = @(
+        [pscustomobject]@{ day = '2026-08-05'; credits = 3.03; turn_count = 1; chat_count = 1 },
+        [pscustomobject]@{ day = '2026-08-04'; credits = 119.07; turn_count = 27; chat_count = 5 }
+    )
+
+    It 'conta os dias com consumo' {
+        Format-KiroDaySummary -Days $dias -Top 5 | Should Match '^2 dias com consumo'
+    }
+
+    It 'aponta o dia de pico' {
+        Format-KiroDaySummary -Days $dias -Top 5 | Should Match 'pico .* em .*04/08'
+    }
+
+    It 'informa a media por dia' {
+        Format-KiroDaySummary -Days $dias -Top 5 | Should Match 'media .*/dia'
+    }
+
+    It 'nao avisa de corte quando a lista cabe inteira' {
+        Format-KiroDaySummary -Days $dias -Top 5 | Should Not Match 'lista:'
+    }
+
+    It 'avisa quando a lista mostra menos dias do que o ciclo teve' {
+        Format-KiroDaySummary -Days $dias -Top 1 | Should Match 'lista: o 1 mais recente|lista: os 1 mais recentes'
+    }
+
+    It 'a media continua sendo do ciclo, e nao dos dias exibidos' {
+        # 122,10 em dois dias da 61,05, mesmo mostrando um dia so.
+        Format-KiroDaySummary -Days $dias -Top 1 | Should Match 'media 61,05/dia|media 61\.05/dia'
+    }
+
+    It 'ciclo sem turno explica o vazio' {
+        Format-KiroDaySummary -Days @() -Top 5 | Should Match 'Nenhum turno'
+    }
+}
+
+Describe 'Format-KiroChatSummary' {
+
+    $chats = @(
+        [pscustomobject]@{ title = 'a'; credits = 75.0 },
+        [pscustomobject]@{ title = 'b'; credits = 25.0 }
+    )
+
+    It 'conta as conversas' {
+        Format-KiroChatSummary -Chats $chats | Should Match '^2 conversas'
+    }
+
+    It 'mostra a fatia da maior conversa' {
+        Format-KiroChatSummary -Chats $chats | Should Match '75% do consumo'
+    }
+
+    It 'ciclo sem conversa explica o vazio' {
+        Format-KiroChatSummary -Chats @() | Should Match 'Nenhuma conversa'
+    }
+}
+
+Describe 'Format-KiroChatDetail' {
+
+    $chat = [pscustomobject]@{
+        project_path = '/home/dev/loja-online'
+        turn_count   = 15
+        last_turn_at = '2026-08-04T18:12:00+00:00'
+    }
+
+    It 'mostra o projeto pelo nome da pasta' {
+        Format-KiroChatDetail -Chat $chat | Should Match 'loja-online'
+    }
+
+    It 'mostra a contagem de turnos' {
+        Format-KiroChatDetail -Chat $chat | Should Match '15 turnos'
+    }
+
+    It 'mostra o ultimo uso em hora local' {
+        Format-KiroChatDetail -Chat $chat | Should Match 'ultimo em \d\d/\d\d \d\d:\d\d'
+    }
+}
+
+
 Describe 'Format-KiroLocalTime' {
 
     It 'converte ISO-8601 para dia e hora curtos' {
