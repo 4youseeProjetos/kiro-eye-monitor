@@ -33,6 +33,12 @@ function Set-WindowInsideWorkArea {
         Ancora a janela no canto inferior direito da area util.
 
         .DESCRIPTION
+        Posicionamento inicial, uma vez por sessao. Mudanca de tamanho depois
+        disso nao passa por aqui: reancorar a cada SizeChanged arrastava a janela
+        de volta para o canto quando o dev trocava de aba, mesmo se ele a tivesse
+        movido para outro monitor. Para isso existem Move-WindowKeepingBottom e
+        Limit-WindowToWorkArea, que preservam onde a janela esta.
+
         WindowStartupLocation="CenterScreen" posicionava a janela fora do
         desktop nesta maquina (dois monitores com escalas de DPI diferentes: o
         retangulo saia em x=4614 com area util de 3840). SystemParameters.WorkArea
@@ -51,6 +57,71 @@ function Set-WindowInsideWorkArea {
     $altura = Get-EffectiveSize -Actual $Window.ActualHeight -Declared $Window.Height -Fallback 480
     $Window.Left = [math]::Max($area.Left, $area.Right - $largura - $Margin)
     $Window.Top = [math]::Max($area.Top, $area.Bottom - $altura - $Margin)
+}
+
+function Move-WindowKeepingBottom {
+    <#
+        .SYNOPSIS
+        Mantem a borda inferior parada quando a altura muda.
+
+        .DESCRIPTION
+        A janela tem SizeToContent="Height", entao trocar de aba muda a altura: a
+        aba de analise e mais alta que o resumo. Crescendo para baixo, a janela
+        ancorada no canto inferior passava da area util; crescendo para cima, o
+        rodape e o botao Atualizar ficam onde estavam e a troca de aba nao parece
+        um pulo.
+
+        Ignora a primeira medida, quando PreviousHeight ainda e zero: ali quem
+        posiciona e Set-WindowInsideWorkArea, no evento Loaded.
+
+        .EXAMPLE
+        Move-WindowKeepingBottom -Window $janela -PreviousHeight 753 -NewHeight 926
+    #>
+    param(
+        [Parameter(Mandatory)]$Window,
+        [Parameter(Mandatory)][double]$PreviousHeight,
+        [Parameter(Mandatory)][double]$NewHeight
+    )
+    if ($PreviousHeight -le 0 -or [double]::IsNaN($Window.Top)) { return }
+    $Window.Top = $Window.Top - ($NewHeight - $PreviousHeight)
+}
+
+function Limit-WindowToWorkArea {
+    <#
+        .SYNOPSIS
+        Empurra a janela de volta para dentro da area util, sem reposicionar.
+
+        .DESCRIPTION
+        Corrige so o que passou da borda, e pelo minimo necessario, para que a
+        janela continue onde o dev a deixou. Sem posicao definida ainda
+        (Left/Top em NaN antes do Loaded) nao ha o que corrigir.
+
+        .EXAMPLE
+        Limit-WindowToWorkArea -Window $janela
+    #>
+    param([Parameter(Mandatory)]$Window)
+    if ([double]::IsNaN($Window.Left) -or [double]::IsNaN($Window.Top)) { return }
+    $area = [System.Windows.SystemParameters]::WorkArea
+    $largura = Get-EffectiveSize -Actual $Window.ActualWidth -Declared $Window.Width -Fallback 430
+    $altura = Get-EffectiveSize -Actual $Window.ActualHeight -Declared $Window.Height -Fallback 480
+    $Window.Left = Get-CoordinateInsideRange -Value $Window.Left -Size $largura -Min $area.Left -Max $area.Right
+    $Window.Top = Get-CoordinateInsideRange -Value $Window.Top -Size $altura -Min $area.Top -Max $area.Bottom
+}
+
+function Get-CoordinateInsideRange {
+    <#
+        Menor deslocamento que traz o intervalo [Value, Value+Size] para dentro
+        de [Min, Max]. Nao cabendo, Min ganha: e melhor perder a borda de baixo
+        do que a barra de titulo, que e por onde se arrasta a janela.
+    #>
+    param(
+        [Parameter(Mandatory)][double]$Value,
+        [Parameter(Mandatory)][double]$Size,
+        [Parameter(Mandatory)][double]$Min,
+        [Parameter(Mandatory)][double]$Max
+    )
+    if ($Value + $Size -gt $Max) { $Value = $Max - $Size }
+    return [math]::Max($Min, $Value)
 }
 
 function Get-EffectiveSize {

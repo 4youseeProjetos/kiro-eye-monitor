@@ -151,9 +151,15 @@ function New-TrayIcon {
 function Register-WindowEvent {
     <# Liga botao, posicionamento da janela e limpeza da bandeja. #>
     $script:MainWindow.add_Loaded({ Set-WindowInsideWorkArea -Window $script:MainWindow })
-    # Trocar de aba muda a altura (SizeToContent="Height"); sem reancorar, a aba
-    # de analise cresce para fora da area util.
-    $script:MainWindow.add_SizeChanged({ Set-WindowInsideWorkArea -Window $script:MainWindow })
+    # Trocar de aba muda a altura (SizeToContent="Height"). Reancorar aqui jogava
+    # a janela para o canto inferior direito a cada troca, desfazendo o arrasto do
+    # dev; agora a base fica parada e so o que passar da area util e corrigido.
+    $script:MainWindow.add_SizeChanged({
+            param($janela, $evento)
+            Move-WindowKeepingBottom -Window $janela `
+                -PreviousHeight $evento.PreviousSize.Height -NewHeight $evento.NewSize.Height
+            Limit-WindowToWorkArea -Window $janela
+        })
     $script:Ui.RefreshButton.add_Click({ Start-Collection })
     $script:MainWindow.add_Closed({
             $script:Tray.Visible = $false
