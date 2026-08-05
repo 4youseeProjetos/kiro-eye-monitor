@@ -5,7 +5,8 @@ os dados de dentro do WSL.
 
 ![janela](docs/janela.png)
 
-Os números da captura são de exemplo.
+As duas abas: o resumo da conta com o consumo por projeto, e a análise por dia e
+por chat. Os números da captura são de exemplo.
 
 ## Instalação
 
