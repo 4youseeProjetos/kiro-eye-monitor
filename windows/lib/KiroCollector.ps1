@@ -98,6 +98,48 @@ function Invoke-KiroCollector {
     return ConvertFrom-KiroCollectorOutput -Raw $raw
 }
 
+function Get-KiroReportText {
+    <#
+        .SYNOPSIS
+        Texto de uma propriedade do relatorio, vazio quando o coletor nao a manda.
+        .DESCRIPTION
+        Mesma tolerancia de Get-KiroReportList, para escalares: coletor anterior
+        ao versionamento nao envia collector_version, e ler a chave ausente
+        estouraria sob Set-StrictMode.
+        .EXAMPLE
+        Get-KiroReportText -Source $Report -Name 'collector_version'
+    #>
+    param(
+        [Parameter(Mandatory)][pscustomobject]$Source,
+        [Parameter(Mandatory)][string]$Name
+    )
+    if ($Source.PSObject.Properties.Name -notcontains $Name) { return '' }
+    return [string]$Source.$Name
+}
+
+function Get-KiroInstalledVersion {
+    <#
+        .SYNOPSIS
+        Versao gravada pelo install.sh ao copiar a janela.
+
+        .DESCRIPTION
+        Arquivo ausente significa janela copiada a mao ou instalada antes do
+        versionamento; nesse caso a janela so nao exibe versao, em vez de falhar.
+
+        .EXAMPLE
+        Get-KiroInstalledVersion -Path "$PSScriptRoot\VERSION"
+    #>
+    param([Parameter(Mandatory)][string]$Path)
+
+    if (-not (Test-Path -LiteralPath $Path)) { return '' }
+    try {
+        return ([string](Get-Content -LiteralPath $Path -TotalCount 1 -Encoding UTF8)).Trim()
+    }
+    catch {
+        return ''
+    }
+}
+
 function Test-KiroCollectorFailure {
     <# Indica se o relatorio devolvido representa uma falha. #>
     param([AllowNull()][pscustomobject]$Report)
@@ -133,7 +175,7 @@ function Get-KiroReportList {
         morrer por causa de uma chave nova que ainda nao existe do outro lado.
 
         Devolve uma List, e nao @(), porque array vazio devolvido por funcao e
-        desenrolado para $null pelo PowerShell — e ai .Count estoura sob
+        desenrolado para $null pelo PowerShell, e ai .Count estoura sob
         Set-StrictMode.
         .EXAMPLE
         Get-KiroReportList -Source $Report.cli_breakdown -Name 'by_day'

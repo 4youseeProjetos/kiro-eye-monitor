@@ -65,8 +65,36 @@ funcionou. É a mesma instalação, só delegada.
 Para abrir depois: o atalho **kiro-eye-monitor** na área de trabalho, ou
 `%LOCALAPPDATA%\KiroEyeMonitor\Start-KiroEyeMonitor.cmd`.
 
-Depois de atualizar o repositório (`git pull`), rode `./install.sh` de novo para
-propagar as mudanças.
+## Atualizar quem já tem instalado
+
+```bash
+cd ~/kiro-eye-monitor   # onde você clonou
+git pull
+./install.sh -y
+```
+
+Rodar o `install.sh` de novo é obrigatório, e não zelo: o `git pull` atualiza só
+o coletor, que vive no clone dentro do WSL. A janela é uma **cópia** em
+`%LOCALAPPDATA%\KiroEyeMonitor`, feita na instalação. Sem reinstalar, você fica
+com metade nova e metade velha.
+
+Não precisa fechar a janela antes: o instalador encerra a instância aberta pela
+linha de comando do processo (o arquivo do ícone fica bloqueado enquanto ela roda),
+recopia, recria os atalhos e abre a versão nova. Nada do seu histórico é perdido —
+o banco de leituras (`~/.local/share/kiro-eye-monitor/snapshots.db`) e o log de
+falhas ficam fora da pasta que é recriada.
+
+O rodapé da janela mostra a versão instalada, e é assim que se confirma que a
+atualização pegou. Se as duas metades estiverem em versões diferentes, ele diz
+qual é cada uma:
+
+```
+Atualizado 05/08 11:30  |  janela v0.2.0, coletor v0.3.0  |  rode ./install.sh no WSL
+```
+
+Uma janela instalada antes do versionamento não mostra versão nenhuma; nesse caso
+o `install.sh` resolve. A versão sai também em `./scripts/diagnostico.sh`, junto do
+commit, o que evita a ida e volta de "qual versão você está rodando?".
 
 ## Requisitos
 

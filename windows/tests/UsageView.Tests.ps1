@@ -26,6 +26,7 @@ function New-TestUi {
 function New-TestReport {
     param([switch]$SemDetalhe, [int]$Percent = 23)
     $relatorio = [pscustomobject]@{
+        collector_version    = '0.2.0'
         account              = [pscustomobject]@{
             plan_name         = 'KIRO POWER'
             credits_used      = 2349.92
@@ -223,8 +224,33 @@ Describe 'Aba de analise com as series por dia e por chat' {
     }
 }
 
-Describe 'Aba de analise limitando as listas' {
+Describe 'Rodape com a versao da janela' {
 
+    It 'mostra a versao instalada ao lado do horario' {
+        $ui = New-TestUi
+        $null = Show-UsageReport -Ui $ui -Report (New-TestReport) `
+            -WarnPercent 75 -CriticalPercent 90 -TopProjects 8 -WindowVersion '0.2.0'
+        $ui.StatusText.Text | Should Match 'v0\.2\.0$'
+    }
+
+    It 'avisa quando o coletor esta em outra versao' {
+        $ui = New-TestUi
+        $relatorio = New-TestReport
+        $relatorio.collector_version = '0.9.9'
+        $null = Show-UsageReport -Ui $ui -Report $relatorio `
+            -WarnPercent 75 -CriticalPercent 90 -TopProjects 8 -WindowVersion '0.2.0'
+        $ui.StatusText.Text | Should Match 'janela v0\.2\.0, coletor v0\.9\.9'
+    }
+
+    It 'sem versao instalada o rodape fica como antes' {
+        $ui = New-TestUi
+        $null = Show-UsageReport -Ui $ui -Report (New-TestReport) `
+            -WarnPercent 75 -CriticalPercent 90 -TopProjects 8
+        $ui.StatusText.Text | Should Match '^Atualizado \d\d/\d\d \d\d:\d\d$'
+    }
+}
+
+Describe 'Aba de analise limitando as listas' {
     It 'respeita o topo de dias e de conversas' {
         $ui = New-TestUi
         $null = Show-UsageReport -Ui $ui -Report (New-TestReport) `

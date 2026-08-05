@@ -280,3 +280,38 @@ function Format-KiroChatDetail {
     return "$projeto  |  $($Chat.turn_count) turnos  |  ultimo em $ultimo"
 }
 
+function Format-KiroStatusLine {
+    <#
+        .SYNOPSIS
+        Rodape: horario da coleta, versao e aviso de metades desencontradas.
+
+        .DESCRIPTION
+        A janela vive em %LOCALAPPDATA% e o coletor no clone do repositorio, entao
+        um git pull sem reinstalar atualiza so metade. Comparar as duas versoes e
+        o que responde "a atualizacao pegou?" sem abrir log nenhum.
+
+        Coletor sem versao e coletor anterior ao versionamento, nao divergencia
+        comprovada: nesse caso o rodape mostra so a versao da janela.
+
+        Texto em ASCII de proposito: o PowerShell 5.1 le .ps1 sem BOM como ANSI,
+        entao um travessao no fonte chega quebrado na tela.
+
+        .EXAMPLE
+        Format-KiroStatusLine -CapturedAt $Report.account.captured_at `
+            -WindowVersion '0.2.0' -CollectorVersion '0.2.0'
+    #>
+    param(
+        [AllowNull()][AllowEmptyString()][string]$CapturedAt,
+        [AllowNull()][AllowEmptyString()][string]$WindowVersion,
+        [AllowNull()][AllowEmptyString()][string]$CollectorVersion
+    )
+    $base = 'Atualizado ' + (Format-KiroLocalTime -IsoTimestamp $CapturedAt)
+    if ([string]::IsNullOrWhiteSpace($WindowVersion)) { return $base }
+    if (-not [string]::IsNullOrWhiteSpace($CollectorVersion) -and
+        $CollectorVersion -ne $WindowVersion) {
+        return "$base  |  janela v$WindowVersion, coletor v$CollectorVersion" +
+        '  |  rode ./install.sh no WSL'
+    }
+    return "$base  |  v$WindowVersion"
+}
+

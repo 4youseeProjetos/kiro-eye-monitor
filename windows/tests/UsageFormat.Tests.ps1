@@ -232,6 +232,34 @@ Describe 'Format-KiroChatDetail' {
 }
 
 
+Describe 'Format-KiroStatusLine' {
+
+    $agora = '2026-08-05T14:25:41+00:00'
+
+    It 'mostra horario e versao quando as duas metades combinam' {
+        $texto = Format-KiroStatusLine -CapturedAt $agora -WindowVersion '0.2.0' -CollectorVersion '0.2.0'
+        $texto | Should Match '^Atualizado \d\d/\d\d \d\d:\d\d'
+        $texto | Should Match 'v0\.2\.0$'
+    }
+
+    It 'avisa quando a janela e o coletor estao em versoes diferentes' {
+        # git pull sem reinstalar: o coletor anda, a janela em %LOCALAPPDATA% fica.
+        $texto = Format-KiroStatusLine -CapturedAt $agora -WindowVersion '0.2.0' -CollectorVersion '0.3.0'
+        $texto | Should Match 'janela v0\.2\.0, coletor v0\.3\.0'
+        $texto | Should Match 'install\.sh'
+    }
+
+    It 'coletor sem versao nao e tratado como divergencia' {
+        Format-KiroStatusLine -CapturedAt $agora -WindowVersion '0.2.0' -CollectorVersion '' |
+            Should Match 'v0\.2\.0$'
+    }
+
+    It 'janela sem versao mostra so o horario' {
+        Format-KiroStatusLine -CapturedAt $agora -WindowVersion '' -CollectorVersion '0.2.0' |
+            Should Match '^Atualizado \d\d/\d\d \d\d:\d\d$'
+    }
+}
+
 Describe 'Format-KiroLocalTime' {
 
     It 'converte ISO-8601 para dia e hora curtos' {

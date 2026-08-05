@@ -102,7 +102,7 @@ function Complete-Collection {
     $nivel = Show-UsageReport -Ui $script:Ui -Report $relatorio `
         -WarnPercent $script:WarnPercent -CriticalPercent $script:CriticalPercent `
         -TopProjects $script:TopProjects -TopDays $script:TopDays -TopChats $script:TopChats `
-        -LogPath $script:LogPath
+        -WindowVersion $script:Versao -LogPath $script:LogPath
     Send-ThresholdAlert -Level $nivel -Report $relatorio
 }
 
@@ -215,6 +215,8 @@ $script:ColetaEmCurso = $null
 $script:UltimoNivel = 'ok'
 $script:BridgeResolvido = Resolve-BridgePath -Informado $BridgePath -ScriptRoot $PSScriptRoot
 $script:IconPath = Join-Path $PSScriptRoot 'assets\eye.ico'
+# Gravado pelo install.sh ao copiar a janela; vazio quando a copia foi manual.
+$script:Versao = Get-KiroInstalledVersion -Path (Join-Path $PSScriptRoot 'VERSION')
 $script:LogPath = Get-WindowLogPath -BaseDir $env:LOCALAPPDATA
 
 $script:MainWindow = New-UsageWindow -XamlPath (Join-Path $PSScriptRoot 'MainWindow.xaml')

@@ -6,6 +6,7 @@ essa e a granularidade do medidor do Kiro (incrementos de 0.01).
 
 from __future__ import annotations
 
+from kiro_eye_monitor import __version__
 from kiro_eye_monitor.models import (
     AccountUsage,
     ChatCredits,
@@ -20,8 +21,14 @@ _CREDIT_DECIMALS = 2
 
 
 def report_to_dict(report: UsageReport) -> dict[str, object]:
-    """Converte o relatorio em estrutura pronta para ``json.dumps``."""
+    """Converte o relatorio em estrutura pronta para ``json.dumps``.
+
+    ``collector_version`` viaja no payload para a janela poder comparar com a
+    propria versao: as duas metades vivem em lugares diferentes (o coletor no
+    clone, a janela em ``%LOCALAPPDATA%``) e podem ficar desencontradas.
+    """
     return {
+        "collector_version": __version__,
         "account": _account_to_dict(report.account),
         "cycle_pace": _cycle_pace_to_dict(report.cycle_pace) if report.cycle_pace else None,
         "cli_breakdown": (

@@ -24,6 +24,9 @@ valor() {
 
 ambiente() {
     secao 'ambiente'
+    valor 'versao' "$(sed -n 's/^__version__ = "\(.*\)"$/\1/p' \
+        "$PROJECT_DIR/src/kiro_eye_monitor/__init__.py")"
+    valor 'commit' "$(git -C "$PROJECT_DIR" rev-parse --short HEAD 2>/dev/null || echo '(sem git)')"
     valor 'distro' "${WSL_DISTRO_NAME:-(fora do WSL)}"
     valor 'kernel' "$(uname -r)"
     valor 'wsl interop' "$([ -e /run/WSL ] && echo presente || echo ausente)"

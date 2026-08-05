@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import json
+import re
 import stat
 import time
 from pathlib import Path
 
 import pytest
 
+from kiro_eye_monitor import __version__
 from kiro_eye_monitor.main import main
 
 USAGE_FALSO = 'echo "Estimated Usage | resets on 2026-08-01 | KIRO POWER" >&2; echo "Credits (2000.00 of 10000 covered in plan)" >&2; echo "bar 20%" >&2'
@@ -85,6 +87,17 @@ def test_emite_json_com_o_total_da_conta(tmp_path: Path, capsys: pytest.CaptureF
         "resets_on": "2026-08-01",
         "captured_at": saida["account"]["captured_at"],
     }
+
+
+def test_payload_declara_a_versao_do_coletor(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A janela compara essa versao com a dela para detectar update pela metade."""
+    assert _rodar(tmp_path, capsys)["collector_version"] == __version__
+
+
+def test_versao_segue_o_formato_semantico() -> None:
+    assert re.fullmatch(r"\d+\.\d+\.\d+", __version__), __version__
 
 
 def test_modo_somente_conta_omite_o_detalhamento(

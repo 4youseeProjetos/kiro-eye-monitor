@@ -1,6 +1,6 @@
 [project]
 name = "kiro-eye-monitor"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Monitor de consumo de creditos Kiro (conta + sessoes locais do kiro-cli)"
 license = "MIT"
 license-files = ["LICENSE"]
@@ -16,6 +16,10 @@ dev = ["pytest==8.3.4"]
 [build-system]
 requires = ["hatchling==1.27.0"]
 build-backend = "hatchling.build"
+
+# Uma versao so no projeto: o build a le do __version__ em vez de repetir aqui.
+[tool.hatch.version]
+path = "src/kiro_eye_monitor/__init__.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/kiro_eye_monitor"]

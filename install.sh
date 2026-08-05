@@ -223,6 +223,12 @@ encerrar_instancia_aberta() {
     sleep 1
 }
 
+versao_do_projeto() {
+    # Fonte unica: o __version__ do pacote Python. Extraido aqui, e nao repetido,
+    # para o instalador nunca gravar uma versao diferente da que o coletor devolve.
+    sed -n 's/^__version__ = "\(.*\)"$/\1/p' "$PROJECT_DIR/src/kiro_eye_monitor/__init__.py"
+}
+
 copiar_janela() {
     # copiar_janela <destino wsl>
     local destino="$1"
@@ -230,6 +236,9 @@ copiar_janela() {
     mkdir -p "$destino"
     cp -r "$PROJECT_DIR/windows/." "$destino/"
     rm -rf "$destino/tests" "$destino/tools"
+    # A janela le este arquivo para se identificar no rodape e para comparar com
+    # a versao que o coletor devolve: git pull sem reinstalar atualiza so metade.
+    versao_do_projeto > "$destino/VERSION"
 }
 
 gerar_atalhos() {
@@ -281,7 +290,7 @@ main() {
 
     encerrar_instancia_aberta
     copiar_janela "$instalacao_wsl"
-    printf 'instalado: %s\n' "$instalacao_win"
+    printf 'instalado: %s (v%s)\n' "$instalacao_win" "$(versao_do_projeto)"
     gerar_atalhos "$instalacao_win"
     atualizar_cache_de_icones
 

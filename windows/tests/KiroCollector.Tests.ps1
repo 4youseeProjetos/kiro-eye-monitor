@@ -69,6 +69,33 @@ Describe 'Set-KiroCollectorEncoding' {
     }
 }
 
+Describe 'Get-KiroInstalledVersion' {
+
+    It 'le a versao gravada pelo install.sh' {
+        $arquivo = Join-Path $env:TEMP 'kiro-versao-teste.txt'
+        Set-Content -Path $arquivo -Value "0.2.0`n" -Encoding UTF8
+        try { Get-KiroInstalledVersion -Path $arquivo | Should Be '0.2.0' }
+        finally { Remove-Item -LiteralPath $arquivo -Force }
+    }
+
+    It 'arquivo ausente devolve vazio, sem derrubar a janela' {
+        Get-KiroInstalledVersion -Path 'C:\nao\existe\VERSION' | Should Be ''
+    }
+}
+
+Describe 'Get-KiroReportText' {
+
+    It 'devolve o valor quando o coletor manda' {
+        $relatorio = [pscustomobject]@{ collector_version = '0.2.0' }
+        Get-KiroReportText -Source $relatorio -Name 'collector_version' | Should Be '0.2.0'
+    }
+
+    It 'coletor anterior ao versionamento devolve vazio' {
+        $relatorio = [pscustomobject]@{ account = 'x' }
+        Get-KiroReportText -Source $relatorio -Name 'collector_version' | Should Be ''
+    }
+}
+
 Describe 'Test-KiroReportHasDetail' {
 
     It 'reconhece relatorio com detalhamento' {

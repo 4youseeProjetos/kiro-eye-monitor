@@ -38,3 +38,37 @@ Describe 'Sintaxe dos scripts PowerShell' {
         }
     }
 }
+
+function Get-NonAsciiStringLiteral {
+    <#
+        Textos de string com caractere fora do ASCII, por arquivo.
+
+        Usa os tokens do parser em vez de varrer o arquivo inteiro: comentario
+        com acento e inofensivo, string exibida na janela nao.
+    #>
+    param([Parameter(Mandatory)][string]$Path)
+
+    $tokens = $null
+    [System.Management.Automation.Language.Parser]::ParseFile($Path, [ref]$tokens, [ref]$null) | Out-Null
+    $kinds = @('StringLiteral', 'StringExpandable', 'HereStringLiteral', 'HereStringExpandable')
+    return @($tokens |
+            Where-Object { $kinds -contains $_.Kind.ToString() } |
+            Where-Object { $_.Text -match '[^\x00-\x7F]' } |
+            ForEach-Object { "linha $($_.Extent.StartLineNumber): $($_.Text)" })
+}
+
+Describe 'Texto exibido pela janela' {
+
+    # O PowerShell 5.1 le .ps1 sem BOM como ANSI, entao acento e travessao no
+    # fonte chegam quebrados na tela: "rode" viraria "rode â€"". Texto vindo do
+    # coletor nao tem esse problema, porque a saida e decodificada como UTF-8.
+    $arquivos = @(Get-ChildItem -Path $script:RaizWindows -Filter '*.ps1' -Recurse |
+            Where-Object { $_.FullName -notlike '*\tests\*' })
+
+    foreach ($arquivo in $arquivos) {
+        It "$($arquivo.Name) so tem string em ASCII" {
+            $achados = Get-NonAsciiStringLiteral -Path $arquivo.FullName
+            ($achados -join '; ') | Should BeNullOrEmpty
+        }
+    }
+}

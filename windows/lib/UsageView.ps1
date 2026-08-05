@@ -334,6 +334,7 @@ function Show-UsageReport {
         # a media e o pico do resumo continuam cobrindo o ciclo inteiro.
         [ValidateRange(1, 62)][int]$TopDays = 5,
         [ValidateRange(1, 100)][int]$TopChats = 10,
+        [AllowEmptyString()][string]$WindowVersion = '',
         [AllowEmptyString()][string]$LogPath = ''
     )
     if (Test-KiroCollectorFailure -Report $Report) {
@@ -346,6 +347,8 @@ function Show-UsageReport {
         -WarnPercent $WarnPercent -CriticalPercent $CriticalPercent
     Show-DetailSection -Ui $Ui -Report $Report -TopProjects $TopProjects
     Show-AnalysisSection -Ui $Ui -Report $Report -TopDays $TopDays -TopChats $TopChats
-    $Ui.StatusText.Text = 'Atualizado ' + (Format-KiroLocalTime -IsoTimestamp $Report.account.captured_at)
+    $Ui.StatusText.Text = Format-KiroStatusLine -CapturedAt $Report.account.captured_at `
+        -WindowVersion $WindowVersion `
+        -CollectorVersion (Get-KiroReportText -Source $Report -Name 'collector_version')
     return $nivel
 }
