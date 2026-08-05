@@ -6,4 +6,4 @@ assim que a janela descobre que esta rodando com um coletor de outra versao —
 o caso de quem fez ``git pull`` sem rodar o ``install.sh`` de novo.
 """
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
