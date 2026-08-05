@@ -6,6 +6,16 @@ Kiro, lendo os dados de dentro do WSL.
 Se um usuário pedir para instalar este projeto, siga o roteiro abaixo. Ele é
 curto de propósito: quase tudo já está automatizado no `install.sh`.
 
+## Primeiro: é instalação ou atualização?
+
+```bash
+cat ~/.config/kiro-eye-monitor/config 2>/dev/null
+```
+
+Se o arquivo existe, o projeto já está nesta máquina: vá para **Atualizar**. Não
+clone de novo — `git clone` sobre um diretório existente falha, e clonar em outro
+lugar cria uma segunda cópia com a janela apontando para a antiga.
+
 ## Instalar
 
 **Obrigatório: rode dentro do WSL.** Não adapte para PowerShell, não traduza os
@@ -37,6 +47,44 @@ quiser que abra junto com o Windows, e `--no-desktop` se ele não quiser atalho.
 Não clone para dentro de `/mnt/c`: funciona, mas a leitura dos arquivos de sessão
 fica lenta pelo sistema de arquivos do Windows.
 
+## Atualizar
+
+São dois passos, e **os dois são obrigatórios**: o `git pull` atualiza o coletor,
+que roda do clone; o `install.sh` recopia a janela para `%LOCALAPPDATA%`. Só o
+`git pull` deixa metade nova e metade velha.
+
+Descubra onde está o clone, em vez de presumir `~/kiro-eye-monitor`:
+
+```bash
+grep '^PROJECT_DIR=' ~/.config/kiro-eye-monitor/config | cut -d= -f2-
+```
+
+Saída vazia significa instalação feita antes desse registro. Nesse caso, tente
+`~/kiro-eye-monitor`; se não existir, o caminho da ponte está em
+`bridge-path.txt`, dentro de `%LOCALAPPDATA%\KiroEyeMonitor`, e o clone é o
+diretório que contém aquele `scripts/`. Não achando, pergunte ao usuário onde ele
+clonou — não clone de novo.
+
+Com o caminho em mãos:
+
+```bash
+cd <clone> && git pull && ./install.sh -y
+```
+
+O `install.sh` encerra a janela aberta, recopia, recria os atalhos e reabre. Não
+peça ao usuário para fechar a janela antes, e não apague o clone: o histórico de
+leituras e o log de falhas ficam fora dele, mas apagar não ajuda em nada.
+
+Confirme que pegou comparando as duas metades:
+
+```bash
+./scripts/diagnostico.sh | head -5
+```
+
+A linha `versao` é a do coletor. O rodapé da janela mostra a da janela; se as duas
+diferirem, ele avisa e diz para rodar o `install.sh` — nesse caso o passo do
+instalador não rodou.
+
 ## Antes de instalar, confira
 
 - `echo $WSL_DISTRO_NAME` precisa retornar algo. Sem isso você não está no WSL.
@@ -61,6 +109,9 @@ A janela em si aparece com o título **kiro-eye-monitor**.
 | Sintoma | Causa |
 | --- | --- |
 | `install.sh` reclama de `WSL_DISTRO_NAME` vazio | rodou fora do WSL |
+| `git clone` diz `destination path already exists` | é atualização, não instalação; use a seção Atualizar |
+| Rodapé da janela diz `janela vX, coletor vY` | fez `git pull` sem rodar o `install.sh` depois |
+| Números novos no coletor e janela sem a mudança | mesma causa: a janela é uma cópia em `%LOCALAPPDATA%` |
 | `{"error":"python3 nao encontrado..."}` | falta python3 na distro |
 | Janela mostra "Falha: executavel nao encontrado: 'kiro-cli'" | kiro-cli não está no PATH da distro |
 | Caixa de diálogo `distro WSL 'X' nao existe nesta maquina` | nome de distro errado; a própria mensagem lista as instaladas |
@@ -70,6 +121,13 @@ A janela em si aparece com o título **kiro-eye-monitor**.
 ## Não faça
 
 - Não rode `install.sh` pelo PowerShell nem por caminho UNC.
+- Não clone de novo quando já existe instalação, e não clone em outro diretório
+  para contornar o erro do `git clone`: a janela instalada aponta para o clone
+  antigo, e você acabaria com duas cópias e uma atualização que não pega.
+- Não pare no `git pull` ao atualizar. Sem o `install.sh`, a janela continua a
+  antiga.
+- Não apague o clone nem a pasta `%LOCALAPPDATA%\KiroEyeMonitor` para "limpar":
+  o instalador já recria a segunda, e apagar não resolve falha nenhuma.
 - Não pergunte ao usuário caminhos que o `install.sh` detecta sozinho. Use
   `--kiro-cli` ou `--sessions-dir` apenas quando a detecção falhar e você já
   souber o caminho certo.

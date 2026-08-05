@@ -73,6 +73,18 @@ git pull
 ./install.sh -y
 ```
 
+Ou peça ao Kiro, no `kiro-cli` dentro do WSL:
+
+```
+Atualize o kiro-eye-monitor na minha máquina
+```
+
+O [AGENTS.md](AGENTS.md) tem o roteiro de atualização separado do de instalação:
+o agente descobre onde está o clone pelo `PROJECT_DIR` gravado em
+`~/.config/kiro-eye-monitor/config`, em vez de presumir `~/kiro-eye-monitor`, e
+não clona de novo — `git clone` sobre um clone existente falha, e clonar em outro
+lugar deixaria a janela apontando para o antigo.
+
 Rodar o `install.sh` de novo é obrigatório, e não zelo: o `git pull` atualiza só
 o coletor, que vive no clone dentro do WSL. A janela é uma **cópia** em
 `%LOCALAPPDATA%\KiroEyeMonitor`, feita na instalação. Sem reinstalar, você fica

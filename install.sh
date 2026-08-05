@@ -166,15 +166,21 @@ validar_caminhos() {
 
 gravar_configuracao() {
     # Lida pelo scripts/collect.sh a cada coleta.
+    #
+    # PROJECT_DIR nao e usado pelo collect.sh, que descobre o proprio caminho:
+    # esta aqui para a atualizacao achar o clone sem adivinhar, inclusive quando
+    # quem atualiza e um agente e o clone nao esta em ~/kiro-eye-monitor.
     local config="${XDG_CONFIG_HOME:-$HOME/.config}/kiro-eye-monitor/config"
     mkdir -p "$(dirname "$config")"
     {
         printf '# Gerado por install.sh em %s\n' "$(date -Is)"
+        printf 'PROJECT_DIR=%s\n' "$PROJECT_DIR"
         [ -n "$KIRO_CLI_PATH" ] && printf 'KIRO_CLI=%s\n' "$KIRO_CLI_PATH"
         [ -n "$SESSIONS_PATH" ] && printf 'SESSIONS_DIR=%s\n' "$SESSIONS_PATH"
         printf 'PYTHON=%s\n' "$(command -v python3)"
     } >"$config"
     printf 'config: %s\n' "$config"
+    printf 'projeto: %s\n' "$PROJECT_DIR"
     [ -n "$KIRO_CLI_PATH" ] && printf 'kiro-cli: %s\n' "$KIRO_CLI_PATH"
     [ -n "$SESSIONS_PATH" ] && printf 'sessoes: %s\n' "$SESSIONS_PATH"
     return 0
