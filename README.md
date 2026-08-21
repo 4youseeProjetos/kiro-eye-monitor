@@ -194,9 +194,9 @@ máquina, e as duas fontes são formatos internos, não contratos:
   Nada disso é documentado.
 
 Ou seja: **uma atualização do `kiro-cli` pode quebrar a leitura sem aviso.**
-Validado na versão 2.15.2. Se a janela passar a mostrar falha ou o detalhamento
-vier zerado depois de um update, é provável que o formato tenha mudado — comece
-por rodar `scripts/collect.sh` e comparar a saída com
+Validado nas versões 2.15.2 e 2.18.1. Se a janela passar a mostrar falha ou o
+detalhamento vier zerado depois de um update, é provável que o formato tenha
+mudado — comece por rodar `scripts/collect.sh` e comparar a saída com
 `kiro-cli chat --no-interactive "/usage" 2>&1`.
 
 O parser falha de forma explícita em vez de silenciosa: quando não encontra o que
@@ -306,6 +306,14 @@ Anotadas porque custaram tempo e não são óbvias:
 
 - O comando `/usage` do kiro-cli escreve o painel em **stderr**, não em stdout.
   Ler só stdout devolve string vazia com código de saída 0.
+- O kiro-cli carrega os **servidores MCP** do agente antes de imprimir o painel,
+  inclusive em `--no-interactive`. Servidor remoto que exige OAuth nunca conclui
+  aí: o processo espera a janela inteira de `mcp.noInteractiveTimeout` — 34s
+  medidos, contra 2s de leitura — e isso estourava o timeout de 30s do coletor.
+  A chamada usa `--agent kiro-eye-monitor-usage`, um agente sem MCP versionado
+  em `src/kiro_eye_monitor/agent_workspace/`, com o cwd apontado para essa pasta:
+  é onde o kiro-cli procura agente de workspace, e `--agent` só aceita nome, não
+  caminho de arquivo.
 - O `wsl.exe` exige o **nome exato** da distro, e esse nome muda de máquina para
   máquina: `Ubuntu`, `Ubuntu-24.04`, `Debian`. Nada é presumido — a distro sai da
   detecção durante a instalação e, na falta dela, da distro padrão registrada em

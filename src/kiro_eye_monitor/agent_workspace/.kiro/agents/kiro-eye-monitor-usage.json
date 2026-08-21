@@ -1,0 +1,8 @@
+{
+  "name": "kiro-eye-monitor-usage",
+  "description": "Agente inerte usado pelo coletor para ler /usage sem carregar servidor MCP.",
+  "mcpServers": {},
+  "useLegacyMcpJson": false,
+  "tools": [],
+  "resources": []
+}

@@ -33,6 +33,8 @@ ambiente() {
     valor 'python3' "$(command -v python3 || echo '(ausente)')"
     valor 'versao python' "$(python3 --version 2>&1 || true)"
     valor 'kiro-cli' "$(command -v kiro-cli || echo '(fora do PATH)')"
+    valor 'agente sem MCP' "$([ -f "$PROJECT_DIR/src/kiro_eye_monitor/agent_workspace/.kiro/agents/kiro-eye-monitor-usage.json" ] &&
+        echo presente || echo 'ausente — a coleta vai esperar os MCP do usuario')"
     valor 'projeto' "$PROJECT_DIR"
     valor 'PATH' "$PATH"
 }

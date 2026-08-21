@@ -113,6 +113,7 @@ A janela em si aparece com o título **kiro-eye-monitor**.
 | Rodapé da janela diz `janela vX, coletor vY` | fez `git pull` sem rodar o `install.sh` depois |
 | Números novos no coletor e janela sem a mudança | mesma causa: a janela é uma cópia em `%LOCALAPPDATA%` |
 | `{"error":"python3 nao encontrado..."}` | falta python3 na distro |
+| Janela diz `excedeu 30.0s ao responder /usage` | kiro-cli travado carregando servidor MCP antes do painel; resolvido a partir da 0.2.2 — atualize (`git pull` + `install.sh`) |
 | Janela mostra "Falha: executavel nao encontrado: 'kiro-cli'" | kiro-cli não está no PATH da distro |
 | Caixa de diálogo `distro WSL 'X' nao existe nesta maquina` | nome de distro errado; a própria mensagem lista as instaladas |
 | Qualquer falha sem causa óbvia | rode `./scripts/diagnostico.sh` e leia a saída antes de mexer em qualquer coisa |

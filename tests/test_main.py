@@ -207,3 +207,24 @@ def test_sucesso_nao_escreve_no_log(tmp_path: Path, capsys: pytest.CaptureFixtur
     _rodar(tmp_path, capsys, "--log", str(tmp_path / "erros.jsonl"))
 
     assert not (tmp_path / "erros.jsonl").exists()
+
+
+def test_chama_o_kiro_cli_com_o_agente_sem_mcp(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Fiacao do agente: sem ele a chamada espera os MCP do usuario e estoura o timeout."""
+    registro = tmp_path / "chamada.txt"
+    codigo = main(
+        [
+            "--kiro-cli",
+            _kiro_cli_falso(tmp_path, f'printf "%s\\n" "$@" > "{registro}"; {USAGE_FALSO}'),
+            "--sessions-dir",
+            str(tmp_path / "sessions"),
+            "--db",
+            str(tmp_path / "snapshots.db"),
+        ]
+    )
+    capsys.readouterr()
+
+    assert codigo == 0
+    assert "--agent" in registro.read_text(encoding="utf-8").splitlines()

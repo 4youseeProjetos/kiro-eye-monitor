@@ -10,7 +10,10 @@ import subprocess
 from pathlib import Path
 from typing import Protocol
 
-_ARGS = ("chat", "--no-interactive", "/usage")
+from kiro_eye_monitor.usage_agent import MinimalAgent
+
+_SUBCOMMAND = ("chat", "--no-interactive")
+_PROMPT = "/usage"
 DEFAULT_TIMEOUT_SECONDS = 30.0
 
 
@@ -28,6 +31,10 @@ class AccountUsageSource(Protocol):
 class KiroCliUsageCommand:
     """Roda ``kiro-cli chat --no-interactive "/usage"`` e devolve o texto cru.
 
+    Recebendo um ``MinimalAgent``, acrescenta ``--agent`` e roda com cwd no
+    workspace dele — sem isso o kiro-cli carrega os MCP do agente default antes
+    de imprimir o painel. Veja ``usage_agent``.
+
     >>> KiroCliUsageCommand().fetch_raw()[:16]
     '\\n\\x1b[1mEstimated Usa'
     """
@@ -36,11 +43,11 @@ class KiroCliUsageCommand:
         self,
         executable: str = "kiro-cli",
         timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
-        cwd: Path | None = None,
+        agent: MinimalAgent | None = None,
     ) -> None:
         self._executable = executable
         self._timeout_seconds = timeout_seconds
-        self._cwd = cwd
+        self._agent = agent
 
     def fetch_raw(self) -> str:
         completed = self._run()
@@ -49,20 +56,29 @@ class KiroCliUsageCommand:
         combined = "\n".join(part for part in (completed.stderr, completed.stdout) if part)
         if not combined.strip():
             raise UsageCommandError(
-                f"'{self._executable} {' '.join(_ARGS)}' terminou com codigo "
+                f"'{' '.join(self._command_line())}' terminou com codigo "
                 f"{completed.returncode} sem texto em stdout nem stderr"
             )
         return combined
+
+    def _command_line(self) -> list[str]:
+        """Argumentos do processo, com ``--agent`` so quando ha agente."""
+        agente = ("--agent", self._agent.name) if self._agent is not None else ()
+        return [self._executable, *_SUBCOMMAND, *agente, _PROMPT]
+
+    def _working_dir(self) -> Path | None:
+        """cwd que torna o agente do pacote visivel para o kiro-cli."""
+        return self._agent.workspace if self._agent is not None else None
 
     def _run(self) -> subprocess.CompletedProcess[str]:
         """Invoca o binario, traduzindo falhas de ambiente em erro de dominio."""
         try:
             return subprocess.run(
-                [self._executable, *_ARGS],
+                self._command_line(),
                 capture_output=True,
                 text=True,
                 timeout=self._timeout_seconds,
-                cwd=self._cwd,
+                cwd=self._working_dir(),
                 check=False,
             )
         except FileNotFoundError as erro:

@@ -22,6 +22,7 @@ from kiro_eye_monitor.error_log import JsonlErrorLog, default_log_path
 from kiro_eye_monitor.serialization import report_to_dict
 from kiro_eye_monitor.session_reader import CliSessionReader, default_cli_sessions_dir
 from kiro_eye_monitor.snapshot_store import SnapshotStore
+from kiro_eye_monitor.usage_agent import packaged_usage_agent
 from kiro_eye_monitor.usage_command import (
     DEFAULT_TIMEOUT_SECONDS,
     KiroCliUsageCommand,
@@ -55,7 +56,13 @@ def build_parser() -> argparse.ArgumentParser:
 def _build_collector(options: argparse.Namespace) -> UsageCollector:
     """Monta o coletor com as dependencias reais."""
     return UsageCollector(
-        account_source=KiroCliUsageCommand(options.kiro_cli, options.timeout),
+        account_source=KiroCliUsageCommand(
+            options.kiro_cli,
+            options.timeout,
+            # Sem agente proprio a chamada herda os servidores MCP do usuario e
+            # trava ~34s antes do painel, estourando o timeout. Ver usage_agent.
+            agent=packaged_usage_agent(),
+        ),
         session_reader=CliSessionReader(options.sessions_dir),
         snapshot_store=SnapshotStore(options.db),
         clock=lambda: datetime.now(timezone.utc),
