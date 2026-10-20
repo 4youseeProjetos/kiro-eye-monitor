@@ -1,7 +1,7 @@
 """Parser da fonte A: o texto do comando ``/usage`` do kiro-cli.
 
-Nao existe saida JSON para esse comando (verificado no kiro-cli 2.15.2), so
-texto decorado com ANSI. Dois formatos ja observados:
+Nao existe saida JSON para esse comando (verificado no kiro-cli 2.31.1), so
+texto, decorado com ANSI quando ha terminal. Tres formatos ja observados:
 
     Estimated Usage | resets on 2026-08-01 | KIRO POWER
     Credits (2271.91 of 10000 covered in plan)
@@ -12,8 +12,14 @@ texto decorado com ANSI. Dois formatos ja observados:
     <barra> 100% (resets on 01/01)
     (0.00 of 50 covered in plan)
 
+    Estimated Usage | resets on 2026-11-01 | KIRO PRO MAX
+    Credits (3808.97 of 5000 covered in plan), 76.2%
+    Your plan is managed by your organization's administrator.
+
 O segundo formato (contas gratuitas, com reset em MM/DD) e suportado porque a
-data pode aparecer sem ano.
+data pode aparecer sem ano. O terceiro (kiro-cli 2.31.1) perdeu a barra e passou
+a imprimir o percentual com decimal na propria linha de creditos — por isso o
+percentual e lido como numero fracionado, e nao como inteiro.
 """
 
 from __future__ import annotations
@@ -27,7 +33,7 @@ from kiro_eye_monitor.models import AccountUsage
 _CREDITS = re.compile(r"\(\s*([\d.,]+)\s+of\s+([\d.,]+)\s+covered in plan\s*\)")
 _RESET_ISO = re.compile(r"resets on\s+(\d{4})-(\d{2})-(\d{2})")
 _RESET_MONTH_DAY = re.compile(r"resets on\s+(\d{1,2})/(\d{1,2})")
-_PERCENT = re.compile(r"(\d{1,3})\s*%")
+_PERCENT = re.compile(r"(\d{1,3}(?:[.,]\d+)?)\s*%")
 _PLAN = re.compile(r"\bKIRO(?:\s+[A-Z+]{2,})+")
 _PREVIEW_LIMIT = 300
 
@@ -77,10 +83,14 @@ def _parse_plan(text: str) -> str:
 
 
 def _parse_percent(text: str, used: float, included: float) -> int:
-    """Le o percentual da barra; deriva de usado/cota se a barra nao vier."""
+    """Le o percentual impresso; deriva de usado/cota quando ele nao vem.
+
+    O valor pode vir fracionado (``76.2%`` no kiro-cli 2.31.1). Ler so os
+    digitos colados ao ``%`` devolvia o decimal — 2% em vez de 76%.
+    """
     match = _PERCENT.search(text)
     if match is not None:
-        return int(match.group(1))
+        return round(float(match.group(1).replace(",", ".")))
     if included <= 0:
         return 0
     return round(used / included * 100)

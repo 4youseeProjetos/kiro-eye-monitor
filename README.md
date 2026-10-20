@@ -188,14 +188,17 @@ máquina, e as duas fontes são formatos internos, não contratos:
 
 - **O painel do `/usage`** é texto decorado com ANSI, feito para humano lerem no
   terminal. Não há saída JSON. O parser extrai plano, valores e data de reset por
-  expressão regular.
+  expressão regular. O formato já mudou em serviço: até a 2.18.1 o percentual
+  vinha inteiro, numa barra em linha própria; na 2.31.1 a barra saiu e o
+  percentual passou a ser fracionado na linha de creditos
+  (`(3808.97 of 5000 covered in plan), 76.2%`).
 - **Os arquivos de sessão** em `~/.kiro/sessions/cli/*.json` guardam o crédito por
   turno em `session_state.conversation_metadata.user_turn_metadatas[].metering_usage`.
   Nada disso é documentado.
 
 Ou seja: **uma atualização do `kiro-cli` pode quebrar a leitura sem aviso.**
-Validado nas versões 2.15.2 e 2.18.1. Se a janela passar a mostrar falha ou o
-detalhamento vier zerado depois de um update, é provável que o formato tenha
+Validado nas versões 2.15.2, 2.18.1 e 2.31.1. Se a janela passar a mostrar falha
+ou o detalhamento vier zerado depois de um update, é provável que o formato tenha
 mudado — comece por rodar `scripts/collect.sh` e comparar a saída com
 `kiro-cli chat --no-interactive "/usage" 2>&1`.
 

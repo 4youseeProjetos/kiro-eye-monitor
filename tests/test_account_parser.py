@@ -28,6 +28,17 @@ def test_plano_pago_com_reset_iso() -> None:
     assert usage.captured_at == AGORA
 
 
+def test_plano_pago_com_percentual_na_linha_de_creditos() -> None:
+    """Formato do kiro-cli 2.31.1: sem barra, percentual fracionado na linha."""
+    usage = parse_account_usage(_fixture("usage_paid_plan_percent_inline.txt"), AGORA)
+
+    assert usage.plan_name == "KIRO PRO MAX"
+    assert usage.credits_used == pytest.approx(3808.97)
+    assert usage.credits_included == pytest.approx(5000.0)
+    assert usage.used_percent == 76, "o decimal de '76.2%' nao pode virar 2%"
+    assert usage.resets_on == date(2026, 11, 1)
+
+
 def test_saldo_restante_derivado_do_total() -> None:
     usage = parse_account_usage(_fixture("usage_paid_plan.txt"), AGORA)
 
