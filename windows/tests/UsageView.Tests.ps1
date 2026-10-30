@@ -9,6 +9,12 @@ Add-Type -AssemblyName PresentationFramework
 
 $script:XamlPath = Join-Path (Split-Path -Parent $PSScriptRoot) 'MainWindow.xaml'
 $script:Nomes = @(
+    'WidgetFrame', 'StandardPanel', 'MinimalPanel', 'DragHandle', 'MinimalDragHandle',
+    'AccountPanel', 'UsagePercentText', 'ExpandedDetails',
+    'MinimalPercentText', 'MinimalCreditsText', 'MinimalUsageBar',
+    'ProjectScrollViewer', 'AnalysisScrollViewer',
+    'MinimizeButton', 'MinimalExpandButton', 'MinimalCloseButton',
+    'PinButton', 'ExpandButton', 'CloseButton',
     'ErrorPanel', 'ErrorText', 'ErrorHintText',
     'PlanText', 'HeadlineText', 'UsageBar', 'PercentText', 'BurnText', 'ProjectionText',
     'CliTotalText', 'ProjectList', 'UnattributedText',
@@ -20,6 +26,63 @@ $script:Nomes = @(
 function New-TestUi {
     $janela = New-UsageWindow -XamlPath $script:XamlPath
     return Get-WindowControl -Window $janela -Names $script:Nomes
+}
+
+Describe 'Contrato visual do widget' {
+
+    $janela = New-UsageWindow -XamlPath $script:XamlPath
+    $ui = Get-WindowControl -Window $janela -Names $script:Nomes
+
+    It 'remove a moldura e a barra de tarefas' {
+        $janela.WindowStyle.ToString() | Should Be 'None'
+        $janela.ShowInTaskbar | Should Be $false
+    }
+
+    It 'usa fundo transparente para desenhar o cartao arredondado' {
+        $janela.AllowsTransparency | Should Be $true
+        $janela.Background.ToString() | Should Be '#00FFFFFF'
+    }
+
+    It 'abre compacto e sem redimensionamento manual' {
+        $janela.Width | Should Be 380
+        $janela.ResizeMode.ToString() | Should Be 'NoResize'
+        $ui.ExpandedDetails.Visibility.ToString() | Should Be 'Collapsed'
+    }
+
+    It 'expoe a moldura, as alcas e os comandos do widget' {
+        $ui.WidgetFrame | Should Not BeNullOrEmpty
+        $ui.DragHandle | Should Not BeNullOrEmpty
+        $ui.MinimalDragHandle | Should Not BeNullOrEmpty
+        $ui.MinimizeButton | Should Not BeNullOrEmpty
+        $ui.MinimalExpandButton | Should Not BeNullOrEmpty
+        $ui.PinButton | Should Not BeNullOrEmpty
+        $ui.ExpandButton | Should Not BeNullOrEmpty
+        $ui.CloseButton | Should Not BeNullOrEmpty
+        $ui.MinimalCloseButton | Should Not BeNullOrEmpty
+    }
+
+    It 'inicia no modo normal com a faixa minima escondida' {
+        $ui.StandardPanel.Visibility.ToString() | Should Be 'Visible'
+        $ui.MinimalPanel.Visibility.ToString() | Should Be 'Collapsed'
+        $ui.ExpandedDetails.Visibility.ToString() | Should Be 'Collapsed'
+    }
+
+    It 'separa o resumo compacto dos detalhes e da faixa minima' {
+        $ui.AccountPanel | Should Not BeNullOrEmpty
+        $ui.UsagePercentText | Should Not BeNullOrEmpty
+        $ui.MinimalPercentText | Should Not BeNullOrEmpty
+        $ui.MinimalCreditsText | Should Not BeNullOrEmpty
+        $ui.MinimalUsageBar | Should Not BeNullOrEmpty
+        $ui.MinimalPanel.RowDefinitions[1].Height.IsAuto | Should Be $true
+        $ui.MainTabs | Should Not BeNullOrEmpty
+    }
+
+    It 'limita a altura das listas expandidas para caber na tela' {
+        $ui.ProjectScrollViewer | Should Not BeNullOrEmpty
+        $ui.AnalysisScrollViewer | Should Not BeNullOrEmpty
+        [bool]($ui.ProjectScrollViewer.MaxHeight -le 300) | Should Be $true
+        [bool]($ui.AnalysisScrollViewer.MaxHeight -le 300) | Should Be $true
+    }
 }
 
 # Relatorio equivalente ao que o coletor devolveu de verdade nesta maquina.
@@ -109,6 +172,18 @@ Describe 'Show-UsageReport com o total da conta' {
     }
 
     It 'move a barra para o percentual da conta' { $ui.UsageBar.Value | Should Be 23 }
+
+    It 'destaca o percentual no resumo compacto' {
+        $ui.UsagePercentText.Text | Should Be '23%'
+    }
+
+    It 'espelha percentual, creditos e barra no modo minimo' {
+        $esperado = (Format-KiroCredits -Value 2349.92) + ' / ' +
+            (Format-KiroCredits -Value 10000.0) + ' creditos'
+        $ui.MinimalPercentText.Text | Should Be '23%'
+        $ui.MinimalCreditsText.Text | Should Be $esperado
+        $ui.MinimalUsageBar.Value | Should Be 23
+    }
 
     It 'informa o saldo restante' { $ui.PercentText.Text | Should Match '23% consumido' }
 
@@ -393,6 +468,11 @@ Describe 'Show-UsageReport quando a coleta falha' {
     }
 
     It 'deixa claro que os numeros nao sao validos' {
+        $ui.AccountPanel.Visibility.ToString() | Should Be 'Collapsed'
+        $ui.UsagePercentText.Text | Should Be ''
+        $ui.MinimalPercentText.Text | Should Be '--'
+        $ui.MinimalCreditsText.Text | Should Match 'Falha'
+        $ui.MinimalUsageBar.Value | Should Be 0
         $ui.HeadlineText.Text | Should Be 'sem dados'
         $ui.PercentText.Text | Should Be ''
     }
@@ -421,6 +501,8 @@ Describe 'Show-UsageReport depois que a coleta volta a funcionar' {
     }
 
     It 'volta a mostrar os creditos' {
+        $ui.AccountPanel.Visibility.ToString() | Should Be 'Visible'
+        $ui.UsagePercentText.Text | Should Be '23%'
         $ui.HeadlineText.Text | Should Match 'creditos'
     }
 }

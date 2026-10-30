@@ -136,3 +136,34 @@ Describe 'Get-CoordinateInsideRange' {
         Get-CoordinateInsideRange -Value -30 -Size 50 -Min 0 -Max 200 | Should Be 0
     }
 }
+
+Describe 'Limit-WindowToBounds' {
+
+    It 'preserva coordenada negativa que ainda pertence a tela virtual' {
+        $janela = New-Object System.Windows.Window
+        $janela.Width = 380
+        $janela.Height = 260
+        $janela.Left = -1200
+        $janela.Top = 100
+        $area = [pscustomobject]@{ Left = -1920; Top = 0; Right = 1920; Bottom = 1080 }
+
+        Limit-WindowToBounds -Window $janela -Area $area
+
+        $janela.Left | Should Be -1200
+        $janela.Top | Should Be 100
+    }
+
+    It 'traz para a tela a coordenada de monitor removido' {
+        $janela = New-Object System.Windows.Window
+        $janela.Width = 380
+        $janela.Height = 260
+        $janela.Left = -2500
+        $janela.Top = 1400
+        $area = [pscustomobject]@{ Left = 0; Top = 0; Right = 1920; Bottom = 1080 }
+
+        Limit-WindowToBounds -Window $janela -Area $area
+
+        $janela.Left | Should Be 0
+        $janela.Top | Should Be 820
+    }
+}

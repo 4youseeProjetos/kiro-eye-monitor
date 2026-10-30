@@ -1,12 +1,27 @@
 # kiro-eye-monitor
 
-Janela no Windows que mostra quanto crédito Kiro você já consumiu no mês, lendo
+Widget no Windows que mostra quanto crédito Kiro você já consumiu no mês, lendo
 os dados de dentro do WSL.
 
-![janela](docs/janela.png)
+![widget](docs/janela.png)
 
-As duas abas: o resumo da conta com o consumo por projeto, e a análise por dia e
-por chat. Os números da captura são de exemplo.
+O mesmo widget tem três tamanhos:
+
+- **Mínimo:** uma faixa com percentual, créditos consumidos/cota e barra.
+- **Normal:** o cartão com saldo, ritmo e projeção do ciclo.
+- **Detalhado:** o cartão normal mais projetos, dias e conversas.
+
+## Usar o widget
+
+- Arraste pela área **KIRO EYE** ou pela faixa mínima. A posição é lembrada.
+- **Menor** muda do cartão normal para a faixa mínima; **Expandir** faz o inverso.
+- **Detalhes** alterna entre os modos normal e detalhado.
+- **Fixar** mantém o widget sobre outras janelas; **×** o esconde na bandeja.
+- O menu da bandeja oferece os três modos, atualização, fixação e encerramento.
+
+Posição, modo de visualização e fixação ficam em
+`%LOCALAPPDATA%\kiro-eye-monitor\widget-state.json`. Abrir o atalho novamente
+não cria uma cópia: a instância existente reaparece.
 
 ## Instalação
 
@@ -97,9 +112,9 @@ recopia, recria os atalhos e abre a versão nova. Nada do seu histórico é perd
 o banco de leituras (`~/.local/share/kiro-eye-monitor/snapshots.db`) e o log de
 falhas ficam fora da pasta que é recriada.
 
-O rodapé da janela mostra a versão instalada, e é assim que se confirma que a
-atualização pegou. Se as duas metades estiverem em versões diferentes, ele diz
-qual é cada uma:
+A linha abaixo de **KIRO EYE** mostra a versão instalada, e é assim que se
+confirma que a atualização pegou. Se as duas metades estiverem em versões
+diferentes, ela diz qual é cada uma:
 
 ```
 Atualizado 05/08 11:30  |  janela v0.2.0, coletor v0.3.0  |  rode ./install.sh no WSL
@@ -131,17 +146,15 @@ ciclo, com a projeção de quanto você chega ao reset. Medir sobre o mês, e n�
 entre duas leituras, evita que uma rajada de poucos minutos vire uma projeção
 absurda.
 
-**O consumo por projeto** aparece direto no resumo, sem nada para marcar. Vem
-dos arquivos que o kiro-cli já grava em `~/.kiro/sessions/cli/*.json`, onde cada
-turno de conversa registra o crédito que consumiu em `metering_usage[].value`.
-Antes isso ficava atrás de uma caixa "Detalhar consumo do kiro-cli", para evitar
-a varredura dos arquivos; medido, esse cuidado não se justificava: ler as 240
-sessões desta máquina (10 MB) custa 36 ms contra 1,8 s do `kiro-cli /usage` na
-mesma coleta.
+**O consumo por projeto** aparece em **Detalhes › Projetos**. Vem dos arquivos
+que o kiro-cli já grava em `~/.kiro/sessions/cli/*.json`, onde cada turno de
+conversa registra o crédito que consumiu em `metering_usage[].value`. A coleta
+sempre inclui esse detalhamento: ler as 240 sessões desta máquina (10 MB) custa
+36 ms contra 1,8 s do `kiro-cli /usage` na mesma coleta.
 
-**A aba "Análise"** responde *quando* e *em qual conversa* o crédito foi gasto,
-que é o que permite ligar um pico a um dia de trabalho. Ela tem duas séries do
-ciclo corrente:
+**A aba "Análise"**, dentro de **Detalhes**, responde *quando* e *em qual
+conversa* o crédito foi gasto, que é o que permite ligar um pico a um dia de
+trabalho. Ela tem duas séries do ciclo corrente:
 
 - **Créditos por dia**, os cinco dias mais recentes com consumo, cada um com
   barra proporcional ao dia de maior consumo do ciclo. A média e o pico do
@@ -208,10 +221,10 @@ mensagem na barra de status.
 
 ## Quando algo falha
 
-A janela não fica quieta: um painel vermelho aparece no topo com a causa, o
-número principal vira `sem dados` — para não haver dúvida de que os valores na
-tela não valem — e o rodapé mostra o horário da tentativa. Se a janela estiver
-minimizada, um aviso surge na bandeja, uma vez por entrada em falha, e não a
+A janela não fica quieta: um painel vermelho substitui o resumo compacto com a
+causa, e os números deixam de aparecer para não haver dúvida de que os valores
+não valem. A linha sob **KIRO EYE** mostra o horário da tentativa. Se o widget
+estiver oculto, um aviso surge na bandeja, uma vez por entrada em falha, e não a
 cada tentativa.
 
 Rode isto na máquina onde o problema aparece e mande a saída inteira:

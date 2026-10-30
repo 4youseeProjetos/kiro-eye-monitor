@@ -86,6 +86,22 @@ function Move-WindowKeepingBottom {
     $Window.Top = $Window.Top - ($NewHeight - $PreviousHeight)
 }
 
+function Limit-WindowToBounds {
+    <# Empurra a janela pelo minimo necessario para dentro da area informada. #>
+    param(
+        [Parameter(Mandatory)]$Window,
+        [Parameter(Mandatory)]$Area
+    )
+
+    if ([double]::IsNaN($Window.Left) -or [double]::IsNaN($Window.Top)) { return }
+    $largura = Get-EffectiveSize -Actual $Window.ActualWidth -Declared $Window.Width -Fallback 380
+    $altura = Get-EffectiveSize -Actual $Window.ActualHeight -Declared $Window.Height -Fallback 320
+    $Window.Left = Get-CoordinateInsideRange -Value $Window.Left -Size $largura `
+        -Min $Area.Left -Max $Area.Right
+    $Window.Top = Get-CoordinateInsideRange -Value $Window.Top -Size $altura `
+        -Min $Area.Top -Max $Area.Bottom
+}
+
 function Limit-WindowToWorkArea {
     <#
         .SYNOPSIS
@@ -100,12 +116,8 @@ function Limit-WindowToWorkArea {
         Limit-WindowToWorkArea -Window $janela
     #>
     param([Parameter(Mandatory)]$Window)
-    if ([double]::IsNaN($Window.Left) -or [double]::IsNaN($Window.Top)) { return }
-    $area = [System.Windows.SystemParameters]::WorkArea
-    $largura = Get-EffectiveSize -Actual $Window.ActualWidth -Declared $Window.Width -Fallback 430
-    $altura = Get-EffectiveSize -Actual $Window.ActualHeight -Declared $Window.Height -Fallback 480
-    $Window.Left = Get-CoordinateInsideRange -Value $Window.Left -Size $largura -Min $area.Left -Max $area.Right
-    $Window.Top = Get-CoordinateInsideRange -Value $Window.Top -Size $altura -Min $area.Top -Max $area.Bottom
+
+    Limit-WindowToBounds -Window $Window -Area ([System.Windows.SystemParameters]::WorkArea)
 }
 
 function Get-CoordinateInsideRange {
@@ -200,10 +212,18 @@ function Show-AccountSection {
     $conta = $Report.account
     $nivel = Get-KiroAlertLevel -UsedPercent ([int]$conta.used_percent) `
         -WarnPercent $WarnPercent -CriticalPercent $CriticalPercent
+    $Ui.AccountPanel.Visibility = 'Visible'
+    $Ui.UsagePercentText.Text = "$($conta.used_percent)%"
+    $Ui.MinimalPercentText.Text = "$($conta.used_percent)%"
+    $usado = Format-KiroCredits -Value ([double]$conta.credits_used)
+    $cota = Format-KiroCredits -Value ([double]$conta.credits_included)
+    $Ui.MinimalCreditsText.Text = "$usado / $cota creditos"
     $Ui.PlanText.Text = "$($conta.plan_name)  |  reseta em $($conta.resets_on)"
     $Ui.HeadlineText.Text = Format-KiroAccountHeadline -Account $conta
     $Ui.UsageBar.Value = [double]$conta.used_percent
     $Ui.UsageBar.Foreground = Get-UsageBarBrush -Level $nivel -Element $Ui.UsageBar
+    $Ui.MinimalUsageBar.Value = [double]$conta.used_percent
+    $Ui.MinimalUsageBar.Foreground = Get-UsageBarBrush -Level $nivel -Element $Ui.MinimalUsageBar
     $restante = Format-KiroCredits -Value ([double]$conta.credits_remaining)
     $Ui.PercentText.Text = "$($conta.used_percent)% consumido  |  restam $restante creditos"
     $Ui.BurnText.Text = Format-KiroCyclePace -Pace $Report.cycle_pace
@@ -271,7 +291,7 @@ function Show-DetailSection {
     $Ui.UnattributedText.Text = Format-KiroUnattributed -Credits $Report.unattributed_credits
 }
 
-$script:LarguraDaBarraDeDia = 190
+$script:LarguraDaBarraDeDia = 135
 
 function ConvertTo-DayRow {
     <#
@@ -378,6 +398,13 @@ function Show-FailurePanel {
         [AllowEmptyString()][string]$LogPath = ''
     )
     $Ui.ErrorPanel.Visibility = 'Visible'
+    $Ui.AccountPanel.Visibility = 'Collapsed'
+    $Ui.ExpandedDetails.Visibility = 'Collapsed'
+    $Ui.UsagePercentText.Text = ''
+    $Ui.MinimalPercentText.Text = '--'
+    $Ui.MinimalCreditsText.Text = 'Falha ao ler consumo'
+    $Ui.MinimalUsageBar.Value = 0
+    $Ui.MinimalUsageBar.Foreground = Get-UsageBarBrush -Level 'critico' -Element $Ui.MinimalUsageBar
     $Ui.ErrorText.Text = Format-KiroErrorSummary -Message ([string]$Report.error)
     $Ui.ErrorHintText.Text = Format-KiroFailureHint -Report $Report -LogPath $LogPath
     $Ui.HeadlineText.Text = 'sem dados'
@@ -414,6 +441,7 @@ function Show-UsageReport {
         return $script:NivelFalha
     }
     $Ui.ErrorPanel.Visibility = 'Collapsed'
+    $Ui.ExpandedDetails.Visibility = if ([bool]$Ui.ExpandButton.IsChecked) { 'Visible' } else { 'Collapsed' }
     $nivel = Show-AccountSection -Ui $Ui -Report $Report `
         -WarnPercent $WarnPercent -CriticalPercent $CriticalPercent
     Show-DetailSection -Ui $Ui -Report $Report -TopProjects $TopProjects

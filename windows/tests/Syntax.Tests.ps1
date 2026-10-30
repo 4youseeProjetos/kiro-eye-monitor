@@ -72,3 +72,43 @@ Describe 'Texto exibido pela janela' {
         }
     }
 }
+
+Describe 'Entrypoint do widget' {
+
+    $entrypoint = Join-Path $script:RaizWindows 'Start-KiroEyeMonitor.ps1'
+    $conteudo = Get-Content -LiteralPath $entrypoint -Raw -Encoding UTF8
+
+    It 'carrega o modulo de comportamento do widget' {
+        [bool]($conteudo -match 'lib\\WidgetWindow\.ps1') | Should Be $true
+    }
+
+    It 'registra os controles interativos do cabecalho' {
+        [bool]($conteudo -match "'DragHandle'") | Should Be $true
+        [bool]($conteudo -match "'PinButton'") | Should Be $true
+        [bool]($conteudo -match "'ExpandButton'") | Should Be $true
+        [bool]($conteudo -match "'CloseButton'") | Should Be $true
+    }
+
+    It 'registra os controles do modo minimo' {
+        [bool]($conteudo -match "'MinimalPanel'") | Should Be $true
+        [bool]($conteudo -match "'MinimalDragHandle'") | Should Be $true
+        [bool]($conteudo -match "'MinimizeButton'") | Should Be $true
+        [bool]($conteudo -match "'MinimalExpandButton'") | Should Be $true
+        [bool]($conteudo -match "'MinimalCloseButton'") | Should Be $true
+    }
+
+    It 'oferece os tres modos no menu da bandeja' {
+        [bool]($conteudo -match "Visualizacao minima") | Should Be $true
+        [bool]($conteudo -match "Visualizacao normal") | Should Be $true
+        [bool]($conteudo -match "Visualizacao detalhada") | Should Be $true
+    }
+
+    It 'cria um menu de contexto para o icone da bandeja' {
+        [bool]($conteudo -match 'ContextMenuStrip') | Should Be $true
+    }
+
+    It 'mantem o dispatcher vivo quando a janela e escondida' {
+        [bool]($conteudo -match 'System\.Windows\.Application') | Should Be $true
+        [bool]($conteudo -notmatch '\.ShowDialog\(') | Should Be $true
+    }
+}
