@@ -16,7 +16,7 @@ O mesmo widget tem três tamanhos:
 - Arraste pela área **KIRO EYE** ou pela faixa mínima. A posição é lembrada.
 - **Menor** muda do cartão normal para a faixa mínima; **Expandir** faz o inverso.
 - **Detalhes** alterna entre os modos normal e detalhado.
-- **Fixar** mantém o widget sobre outras janelas; **×** o esconde na bandeja.
+- **Fixar**, disponível nos modos normal e mínimo, mantém o widget sobre outras janelas; **×** o esconde na bandeja.
 - O menu da bandeja oferece os três modos, atualização, fixação e encerramento.
 
 Posição, modo de visualização e fixação ficam em

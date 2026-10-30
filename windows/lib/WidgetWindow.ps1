@@ -177,13 +177,16 @@ function Set-WidgetPinned {
     )
 
     $Window.Topmost = $Pinned
-    $Ui.PinButton.IsChecked = $Pinned
-    $Ui.PinButton.ToolTip = if ($Pinned) {
+    $dica = if ($Pinned) {
         'Deixar que outras janelas cubram o widget'
     }
     else {
         'Manter sobre outras janelas'
     }
+    $Ui.PinButton.IsChecked = $Pinned
+    $Ui.PinButton.ToolTip = $dica
+    $Ui.MinimalPinButton.IsChecked = $Pinned
+    $Ui.MinimalPinButton.ToolTip = $dica
 }
 
 function Restore-WidgetPosition {

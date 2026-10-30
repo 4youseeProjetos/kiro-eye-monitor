@@ -47,7 +47,7 @@ $script:ControlNames = @(
     'WidgetFrame', 'StandardPanel', 'MinimalPanel', 'DragHandle', 'MinimalDragHandle',
     'AccountPanel', 'UsagePercentText', 'ExpandedDetails',
     'MinimalPercentText', 'MinimalCreditsText', 'MinimalUsageBar',
-    'MinimizeButton', 'MinimalExpandButton', 'MinimalCloseButton',
+    'MinimizeButton', 'MinimalExpandButton', 'MinimalPinButton', 'MinimalCloseButton',
     'PinButton', 'ExpandButton', 'CloseButton',
     'ErrorPanel', 'ErrorText', 'ErrorHintText',
     'PlanText', 'HeadlineText', 'UsageBar', 'PercentText', 'BurnText', 'ProjectionText',
@@ -174,6 +174,15 @@ function Set-CurrentWidgetViewMode {
     $null = Save-CurrentWidgetState
 }
 
+function Set-CurrentWidgetPinned {
+    <# Sincroniza os dois botoes, a bandeja, o z-order e o estado persistido. #>
+    param([Parameter(Mandatory)][bool]$Pinned)
+
+    Set-WidgetPinned -Window $script:MainWindow -Ui $script:Ui -Pinned $Pinned
+    if ($null -ne $script:TrayPinItem) { $script:TrayPinItem.Checked = $Pinned }
+    $null = Save-CurrentWidgetState
+}
+
 function Show-MainWindow {
     <# Mostra e ativa o widget, inclusive depois de ocultado pela tecla X. #>
     if (-not $script:MainWindow.IsVisible) { $script:MainWindow.Show() }
@@ -258,9 +267,7 @@ function New-TrayIcon {
     $script:TrayNormalItem.add_Click({ Set-CurrentWidgetViewMode -Mode 'normal' })
     $script:TrayDetailedItem.add_Click({ Set-CurrentWidgetViewMode -Mode 'detailed' })
     $script:TrayPinItem.add_Click({
-            Set-WidgetPinned -Window $script:MainWindow -Ui $script:Ui `
-                -Pinned ([bool]$script:TrayPinItem.Checked)
-            $null = Save-CurrentWidgetState
+            Set-CurrentWidgetPinned -Pinned ([bool]$script:TrayPinItem.Checked)
         })
     $sair.add_Click({ Stop-WidgetApplication })
     Sync-TrayViewMode
@@ -303,12 +310,10 @@ function Register-WindowEvent {
             Set-CurrentWidgetViewMode -Mode $modo
         })
     $script:Ui.PinButton.add_Click({
-            Set-WidgetPinned -Window $script:MainWindow -Ui $script:Ui `
-                -Pinned ([bool]$script:Ui.PinButton.IsChecked)
-            if ($null -ne $script:TrayPinItem) {
-                $script:TrayPinItem.Checked = [bool]$script:Ui.PinButton.IsChecked
-            }
-            $null = Save-CurrentWidgetState
+            Set-CurrentWidgetPinned -Pinned ([bool]$script:Ui.PinButton.IsChecked)
+        })
+    $script:Ui.MinimalPinButton.add_Click({
+            Set-CurrentWidgetPinned -Pinned ([bool]$script:Ui.MinimalPinButton.IsChecked)
         })
     $script:Ui.CloseButton.add_Click({ Toggle-MainWindow })
     $script:Ui.MinimalCloseButton.add_Click({ Toggle-MainWindow })

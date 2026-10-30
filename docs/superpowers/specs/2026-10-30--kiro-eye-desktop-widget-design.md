@@ -33,7 +33,7 @@ de arraste. **Menor** abre o modo mínimo; **Detalhes** alterna entre normal e
 detalhado.
 
 O modo mínimo terá sua própria alça de arraste, o percentual, o consumo no
-formato `usado / cota`, uma barra fina, **Expandir** e **Fechar**. Os três modos
+formato `usado / cota`, uma barra fina, **Fixar**, **Expandir** e **Fechar**. Os três modos
 também estarão disponíveis no menu da bandeja.
 
 A área principal exibirá o percentual como número de maior hierarquia, seguida pelo consumo total, barra de progresso, saldo e duas linhas curtas para ritmo e projeção. Em falha, essa área será substituída pelo painel de erro; números antigos não continuarão visíveis.

@@ -180,7 +180,7 @@ Expected: todos passam.
 
 - [x] **Step 1: Escrever testes RED para o modo mínimo**
 
-Exigir `MinimalPanel`, `MinimalDragHandle`, `MinimalPercentText`, `MinimalCreditsText`, `MinimalUsageBar`, `MinimalExpandButton`, `MinimalCloseButton` e `MinimizeButton`. Verificar percentual, consumo/cota e nível da barra.
+Exigir `MinimalPanel`, `MinimalDragHandle`, `MinimalPercentText`, `MinimalCreditsText`, `MinimalUsageBar`, `MinimalPinButton`, `MinimalExpandButton`, `MinimalCloseButton` e `MinimizeButton`. Verificar percentual, consumo/cota e nível da barra.
 
 - [x] **Step 2: Escrever testes RED para transições e persistência**
 

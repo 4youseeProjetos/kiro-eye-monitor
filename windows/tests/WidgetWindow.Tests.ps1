@@ -12,6 +12,7 @@ function New-TestWidgetUi {
         ExpandedDetails = [pscustomobject]@{ Visibility = 'Collapsed' }
         ExpandButton    = [pscustomobject]@{ IsChecked = $false; ToolTip = '' }
         PinButton       = [pscustomobject]@{ IsChecked = $false; ToolTip = '' }
+        MinimalPinButton = [pscustomobject]@{ IsChecked = $false; ToolTip = '' }
     }
 }
 
@@ -115,10 +116,12 @@ Describe 'Controles do widget' {
         Set-WidgetPinned -Window $janela -Ui $ui -Pinned $true
         $janela.Topmost | Should Be $true
         $ui.PinButton.IsChecked | Should Be $true
+        $ui.MinimalPinButton.IsChecked | Should Be $true
 
         Set-WidgetPinned -Window $janela -Ui $ui -Pinned $false
         $janela.Topmost | Should Be $false
         $ui.PinButton.IsChecked | Should Be $false
+        $ui.MinimalPinButton.IsChecked | Should Be $false
     }
 
     It 'restaura coordenadas finitas' {

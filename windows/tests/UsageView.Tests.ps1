@@ -13,7 +13,7 @@ $script:Nomes = @(
     'AccountPanel', 'UsagePercentText', 'ExpandedDetails',
     'MinimalPercentText', 'MinimalCreditsText', 'MinimalUsageBar',
     'ProjectScrollViewer', 'AnalysisScrollViewer',
-    'MinimizeButton', 'MinimalExpandButton', 'MinimalCloseButton',
+    'MinimizeButton', 'MinimalExpandButton', 'MinimalPinButton', 'MinimalCloseButton',
     'PinButton', 'ExpandButton', 'CloseButton',
     'ErrorPanel', 'ErrorText', 'ErrorHintText',
     'PlanText', 'HeadlineText', 'UsageBar', 'PercentText', 'BurnText', 'ProjectionText',
@@ -55,6 +55,7 @@ Describe 'Contrato visual do widget' {
         $ui.MinimalDragHandle | Should Not BeNullOrEmpty
         $ui.MinimizeButton | Should Not BeNullOrEmpty
         $ui.MinimalExpandButton | Should Not BeNullOrEmpty
+        $ui.MinimalPinButton | Should Not BeNullOrEmpty
         $ui.PinButton | Should Not BeNullOrEmpty
         $ui.ExpandButton | Should Not BeNullOrEmpty
         $ui.CloseButton | Should Not BeNullOrEmpty

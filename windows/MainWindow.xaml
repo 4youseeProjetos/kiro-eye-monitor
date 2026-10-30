@@ -505,6 +505,7 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <Border x:Name="MinimalDragHandle"
                                 Grid.Column="0"
@@ -530,13 +531,18 @@
                                            Text="Carregando..." />
                             </StackPanel>
                         </Border>
+                        <ToggleButton x:Name="MinimalPinButton"
+                                      Grid.Column="1"
+                                      Content="Fixar"
+                                      ToolTip="Manter sobre outras janelas"
+                                      Style="{StaticResource HeaderToggleStyle}" />
                         <Button x:Name="MinimalExpandButton"
-                                Grid.Column="1"
+                                Grid.Column="2"
                                 Content="Expandir"
                                 ToolTip="Mostrar o cartao normal"
                                 Style="{StaticResource HeaderButtonStyle}" />
                         <Button x:Name="MinimalCloseButton"
-                                Grid.Column="2"
+                                Grid.Column="3"
                                 Content="&#x00D7;"
                                 ToolTip="Ocultar na bandeja"
                                 FontSize="16"

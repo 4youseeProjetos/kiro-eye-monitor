@@ -94,7 +94,9 @@ Describe 'Entrypoint do widget' {
         [bool]($conteudo -match "'MinimalDragHandle'") | Should Be $true
         [bool]($conteudo -match "'MinimizeButton'") | Should Be $true
         [bool]($conteudo -match "'MinimalExpandButton'") | Should Be $true
+        [bool]($conteudo -match "'MinimalPinButton'") | Should Be $true
         [bool]($conteudo -match "'MinimalCloseButton'") | Should Be $true
+        [bool]($conteudo -match 'MinimalPinButton\.add_Click') | Should Be $true
     }
 
     It 'oferece os tres modos no menu da bandeja' {
